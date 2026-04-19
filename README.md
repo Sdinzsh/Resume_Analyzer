@@ -11,7 +11,7 @@
 **Instantly analyze your resume against ATS systems using free AI models.**  
 Get a score, fix weak bullets, identify missing keywords, and match job descriptions — all in ~15 seconds.
 
-[🚀 Live Demo](https://resume-analyzer-01.vercel.app) · [🐛 Report Bug](https://github.com/Sdinzsh/Resume_analyser/issues) · [✨ Request Feature](https://github.com/Sdinzsh/Resume_analyser/issues)
+[🚀 Live Demo](https://resume-analyzer-01.vercel.app) · [🐛 Report Bug](https://github.com/Sdinzsh/Resume_Analyzer/issues) · [✨ Request Feature](https://github.com/Sdinzsh/Resume_Analyzer/issues)
 
 </div>
 
