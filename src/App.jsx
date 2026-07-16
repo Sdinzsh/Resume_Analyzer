@@ -950,10 +950,11 @@ export default function ResumeAnalyzer() {
 
     // Updated 2026 free models (tested working)
     const MODELS = [
-      "nvidia/nemotron-3-super-120b-a12b:free", // Strongest current free model
-      "deepseek/deepseek-r1:free",
-      "arcee-ai/trinity-large-preview:free",
-      "z-ai/glm-4.5-air:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free", // New strongest current free model
+      "nousresearch/hermes-3-llama-3.1-405b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "qwen/qwen3-next-80b-a3b-instruct:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
       "openrouter/free", // Smart fallback router
     ];
 
