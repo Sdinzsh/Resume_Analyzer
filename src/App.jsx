@@ -1,74 +1,183 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 const COLORS = {
-  bg: "#0a0b0f",
-  surface: "#111318",
-  card: "#16181f",
-  border: "#1e2230",
-  accent: "#00e5ff",
-  accentDim: "#00e5ff22",
-  green: "#00ff88",
-  greenDim: "#00ff8818",
-  yellow: "#ffd166",
-  yellowDim: "#ffd16618",
-  red: "#ff4d6d",
-  redDim: "#ff4d6d18",
-  muted: "#4a5068",
-  text: "#e2e8f0",
-  textDim: "#7f8ea3",
+  bg: "#070b14",
+  surface: "#0f172a",
+  surfaceHover: "#1e293b",
+  card: "#131c2e",
+  cardHover: "#18243b",
+  border: "#1e2d42",
+  borderGlow: "rgba(99, 102, 241, 0.35)",
+  accent: "#6366f1",
+  accentHover: "#4f46e5",
+  accentLight: "#818cf8",
+  accentDim: "rgba(99, 102, 241, 0.12)",
+  cyan: "#06b6d4",
+  cyanDim: "rgba(6, 182, 212, 0.12)",
+  purple: "#8b5cf6",
+  green: "#10b981",
+  greenDim: "rgba(16, 185, 129, 0.12)",
+  greenBorder: "rgba(16, 185, 129, 0.3)",
+  yellow: "#f59e0b",
+  yellowDim: "rgba(245, 158, 11, 0.12)",
+  yellowBorder: "rgba(245, 158, 11, 0.3)",
+  red: "#ef4444",
+  redDim: "rgba(239, 68, 68, 0.12)",
+  redBorder: "rgba(239, 68, 68, 0.3)",
+  muted: "#64748b",
+  text: "#f8fafc",
+  textMuted: "#94a3b8",
+  textDim: "#64748b",
 };
 
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'Syne', sans-serif; }
-
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: ${COLORS.surface}; }
-  ::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 2px; }
-
-  @keyframes pulse-ring {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
-    70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(0, 229, 255, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+  body {
+    background: ${COLORS.bg};
+    color: ${COLORS.text};
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  @keyframes scan {
-    0% { transform: translateY(-100%); opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
-    100% { transform: translateY(800%); opacity: 0; }
+
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
+    50% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.5); }
   }
+
+  @keyframes scanLine {
+    0% { top: 0%; opacity: 0; }
+    30% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
+    from { opacity: 0; transform: translateY(18px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  @keyframes scoreCount {
-    from { opacity: 0; transform: scale(0.5); }
-    to { opacity: 1; transform: scale(1); }
+
+  @keyframes floatSlow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
   }
-  @keyframes dash {
-    from { stroke-dashoffset: 440; }
+
+  @keyframes spinSlow {
+    to { transform: rotate(360deg); }
   }
+
   @keyframes shimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
   }
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+
+  .btn-hover {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  .btn-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35);
+  }
+  .btn-hover:active {
+    transform: translateY(0);
+  }
+
+  .card-glass {
+    background: rgba(19, 28, 46, 0.75);
+    backdrop-filter: blur(16px);
+    border: 1px solid ${COLORS.border};
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   }
 `;
 
-function ScoreGauge({ score, label }) {
-  const radius = 70;
+// ── SVG Icon Helper Components ─────────────────────────────────────
+const Icons = {
+  Sparkles: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+    </svg>
+  ),
+  Upload: () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+      <path d="M12 12v9"/>
+      <path d="m16 16-4-4-4 4"/>
+    </svg>
+  ),
+  Document: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+  ),
+  Check: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  ),
+  Shield: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+    </svg>
+  ),
+  Briefcase: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
+  ),
+  Gear: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ),
+  Copy: () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+    </svg>
+  ),
+  External: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 3h6v6"/>
+      <path d="M10 14 21 3"/>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    </svg>
+  ),
+  Trash: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18"/>
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+    </svg>
+  ),
+  AlertTriangle: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
+  Target: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <circle cx="12" cy="12" r="6"/>
+      <circle cx="12" cy="12" r="2"/>
+    </svg>
+  ),
+};
+
+// ── Score Gauge Component ──────────────────────────────────────────
+function ScoreGauge({ score, label, subtext }) {
+  const radius = 64;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
   const color =
     score >= 75 ? COLORS.green : score >= 50 ? COLORS.yellow : COLORS.red;
+  const bgDim =
+    score >= 75 ? COLORS.greenDim : score >= 50 ? COLORS.yellowDim : COLORS.redDim;
+  const borderDim =
+    score >= 75 ? COLORS.greenBorder : score >= 50 ? COLORS.yellowBorder : COLORS.redBorder;
 
   return (
     <div
@@ -76,22 +185,26 @@ function ScoreGauge({ score, label }) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 8,
+        padding: "20px 16px",
+        background: COLORS.card,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 16,
+        boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
       }}
     >
-      <div style={{ position: "relative", width: 180, height: 180 }}>
-        <svg width="180" height="180" style={{ transform: "rotate(-90deg)" }}>
+      <div style={{ position: "relative", width: 150, height: 150 }}>
+        <svg width="150" height="150" style={{ transform: "rotate(-90deg)" }}>
           <circle
-            cx="90"
-            cy="90"
+            cx="75"
+            cy="75"
             r={radius}
             fill="none"
             stroke={COLORS.border}
             strokeWidth="10"
           />
           <circle
-            cx="90"
-            cy="90"
+            cx="75"
+            cy="75"
             r={radius}
             fill="none"
             stroke={color}
@@ -100,8 +213,8 @@ function ScoreGauge({ score, label }) {
             strokeDasharray={circ}
             strokeDashoffset={offset}
             style={{
-              transition: "stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1)",
-              filter: `drop-shadow(0 0 8px ${color})`,
+              transition: "stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)",
+              filter: `drop-shadow(0 0 6px ${color}88)`,
             }}
           />
         </svg>
@@ -113,101 +226,162 @@ function ScoreGauge({ score, label }) {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            animation: "scoreCount 0.6s ease-out",
           }}
         >
           <span
             style={{
-              fontFamily: "'Space Mono'",
-              fontSize: 42,
-              fontWeight: 700,
-              color,
+              fontFamily: "'JetBrains Mono'",
+              fontSize: 38,
+              fontWeight: 800,
+              color: "#ffffff",
               lineHeight: 1,
+              letterSpacing: -1,
             }}
           >
             {score}
           </span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 11,
               color: COLORS.textDim,
-              letterSpacing: 2,
-              textTransform: "uppercase",
+              fontWeight: 600,
+              marginTop: 2,
             }}
           >
-            / 100
+            SCORE / 100
           </span>
         </div>
       </div>
       <div
         style={{
-          background: color + "22",
-          border: `1px solid ${color}44`,
-          color,
-          padding: "4px 16px",
+          marginTop: 12,
+          background: bgDim,
+          border: `1px solid ${borderDim}`,
+          color: color,
+          padding: "4px 14px",
           borderRadius: 20,
-          fontSize: 13,
-          fontWeight: 600,
-          letterSpacing: 1,
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: 0.5,
           textTransform: "uppercase",
         }}
       >
         {label}
       </div>
+      {subtext && (
+        <span style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 6 }}>
+          {subtext}
+        </span>
+      )}
     </div>
   );
 }
 
-function Tag({ text, color }) {
+function Tag({ text, color = COLORS.accent, isCopyable = false }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!isCopyable) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <span
+      onClick={handleCopy}
       style={{
-        background: color + "18",
-        border: `1px solid ${color}44`,
-        color,
-        padding: "3px 10px",
-        borderRadius: 4,
+        background: color + "14",
+        border: `1px solid ${color}33`,
+        color: color,
+        padding: "4px 10px",
+        borderRadius: 6,
         fontSize: 12,
-        fontFamily: "'Space Mono'",
-        whiteSpace: "nowrap",
+        fontFamily: "'JetBrains Mono'",
+        fontWeight: 500,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        cursor: isCopyable ? "pointer" : "default",
+        transition: "all 0.15s ease",
       }}
     >
       {text}
+      {isCopyable && (
+        <span style={{ opacity: 0.6, fontSize: 10 }}>
+          {copied ? "✓" : <Icons.Copy />}
+        </span>
+      )}
     </span>
   );
 }
 
-function Section({ title, icon, children, delay = 0, accent = COLORS.accent }) {
+function SectionCard({ title, icon: IconComponent, children, delay = 0, badge, headerAction }) {
   return (
     <div
       style={{
         background: COLORS.card,
         border: `1px solid ${COLORS.border}`,
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 24,
-        animation: `fadeUp 0.5s ease-out ${delay}s both`,
+        boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+        animation: `fadeUp 0.4s ease-out ${delay}s both`,
       }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          justifyContent: "space-between",
           marginBottom: 20,
+          borderBottom: `1px solid ${COLORS.border}88`,
+          paddingBottom: 14,
         }}
       >
-        <span style={{ fontSize: 20 }}>{icon}</span>
-        <h3
-          style={{
-            fontFamily: "'Syne'",
-            fontWeight: 700,
-            fontSize: 16,
-            letterSpacing: 0.5,
-            color: accent,
-          }}
-        >
-          {title}
-        </h3>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {IconComponent && (
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: COLORS.accentDim,
+                border: `1px solid ${COLORS.borderGlow}`,
+                color: COLORS.accentLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconComponent />
+            </div>
+          )}
+          <h3
+            style={{
+              fontWeight: 700,
+              fontSize: 17,
+              color: "#ffffff",
+              letterSpacing: -0.2,
+            }}
+          >
+            {title}
+          </h3>
+          {badge && (
+            <span
+              style={{
+                background: COLORS.accentDim,
+                color: COLORS.accentLight,
+                padding: "2px 8px",
+                borderRadius: 12,
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              {badge}
+            </span>
+          )}
+        </div>
+        {headerAction}
       </div>
       {children}
     </div>
@@ -216,20 +390,19 @@ function Section({ title, icon, children, delay = 0, accent = COLORS.accent }) {
 
 function LoadingAnalysis() {
   const steps = [
-    "Parsing PDF structure...",
-    "Scanning for ATS patterns...",
-    "Checking keyword density...",
-    "Analyzing bullet strength...",
-    "Evaluating formatting...",
-    "Computing ATS score...",
-    "Generating suggestions...",
+    "Extracting text from PDF layout...",
+    "Scanning for ATS parsing keywords & structure...",
+    "Calculating keyword density and position weights...",
+    "Evaluating bullet point action verbs and metrics...",
+    "Checking formatting risk factors...",
+    "Synthesizing final ATS alignment report...",
   ];
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     const id = setInterval(
       () => setStep((s) => Math.min(s + 1, steps.length - 1)),
-      900,
+      1100,
     );
     return () => clearInterval(id);
   }, []);
@@ -241,18 +414,22 @@ function LoadingAnalysis() {
         flexDirection: "column",
         alignItems: "center",
         gap: 32,
-        padding: "60px 20px",
+        padding: "64px 24px",
+        background: COLORS.card,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 20,
+        boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
       }}
     >
-      <div style={{ position: "relative", width: 80, height: 80 }}>
+      <div style={{ position: "relative", width: 90, height: 90 }}>
         <div
           style={{
-            width: 80,
-            height: 80,
+            width: 90,
+            height: 90,
             borderRadius: "50%",
-            border: `2px solid ${COLORS.accent}33`,
-            borderTop: `2px solid ${COLORS.accent}`,
-            animation: "spin 1s linear infinite",
+            border: `3px solid ${COLORS.accentDim}`,
+            borderTop: `3px solid ${COLORS.accent}`,
+            animation: "spinSlow 1.2s linear infinite",
           }}
         />
         <div
@@ -262,23 +439,23 @@ function LoadingAnalysis() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 28,
+            color: COLORS.accent,
           }}
         >
-          🔍
+          <Icons.Sparkles />
         </div>
       </div>
 
       <div style={{ textAlign: "center" }}>
-        <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
-          Analyzing Resume
+        <h3 style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginBottom: 6 }}>
+          Analyzing Resume Quality
         </h3>
-        <p style={{ color: COLORS.textDim, fontSize: 14 }}>
-          AI is scanning every detail...
+        <p style={{ color: COLORS.textMuted, fontSize: 14 }}>
+          Our AI engine is checking every ATS parser variable...
         </p>
       </div>
 
-      <div style={{ width: "100%", maxWidth: 400 }}>
+      <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", gap: 10 }}>
         {steps.map((s, i) => (
           <div
             key={i}
@@ -286,15 +463,17 @@ function LoadingAnalysis() {
               display: "flex",
               alignItems: "center",
               gap: 12,
-              padding: "8px 0",
-              opacity: i <= step ? 1 : 0.25,
-              transition: "opacity 0.4s",
+              padding: "10px 14px",
+              borderRadius: 8,
+              background: i === step ? COLORS.surfaceHover : "transparent",
+              opacity: i <= step ? 1 : 0.3,
+              transition: "all 0.3s ease",
             }}
           >
             <span
               style={{
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 borderRadius: "50%",
                 background:
                   i < step
@@ -302,26 +481,26 @@ function LoadingAnalysis() {
                     : i === step
                       ? COLORS.accent
                       : COLORS.border,
+                color: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 11,
                 flexShrink: 0,
-                transition: "background 0.3s",
-                boxShadow: i === step ? `0 0 8px ${COLORS.accent}` : "none",
+                transition: "all 0.3s",
+                boxShadow: i === step ? `0 0 10px ${COLORS.accent}` : "none",
               }}
             >
               {i < step ? (
-                "✓"
+                <Icons.Check />
               ) : i === step ? (
                 <span
                   style={{
-                    animation: "blink 0.8s infinite",
                     display: "block",
                     width: 6,
                     height: 6,
                     borderRadius: "50%",
-                    background: COLORS.bg,
+                    background: "#ffffff",
                   }}
                 />
               ) : (
@@ -330,9 +509,10 @@ function LoadingAnalysis() {
             </span>
             <span
               style={{
-                fontFamily: "'Space Mono'",
+                fontFamily: "'JetBrains Mono'",
                 fontSize: 13,
                 color: i <= step ? COLORS.text : COLORS.muted,
+                fontWeight: i === step ? 600 : 400,
               }}
             >
               {s}
@@ -344,681 +524,21 @@ function LoadingAnalysis() {
   );
 }
 
-function ResultsDashboard({ result }) {
-  if (!result) return null;
-  const scoreLabel =
-    result.atsScore >= 75
-      ? "ATS Friendly"
-      : result.atsScore >= 50
-        ? "Needs Work"
-        : "High Risk";
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        animation: "fadeUp 0.5s ease-out",
-      }}
-    >
-      {/* Score Hero */}
-      <div
-        style={{
-          background: COLORS.card,
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: 12,
-          padding: 32,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 32,
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div>
-          <p
-            style={{
-              color: COLORS.textDim,
-              fontSize: 13,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            ATS Compatibility Score
-          </p>
-          <ScoreGauge score={result.atsScore} label={scoreLabel} />
-        </div>
-
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <p
-            style={{
-              fontFamily: "'Space Mono'",
-              fontSize: 14,
-              color: COLORS.textDim,
-              lineHeight: 1.7,
-              borderLeft: `3px solid ${COLORS.accent}`,
-              paddingLeft: 16,
-            }}
-          >
-            {result.summary}
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 16,
-              marginTop: 20,
-              flexWrap: "wrap",
-            }}
-          >
-            {[
-              {
-                label: "Keywords",
-                val: result.keywordMatchScore + "%",
-                color: COLORS.accent,
-              },
-              {
-                label: "Format",
-                val: result.formattingScore + "%",
-                color: COLORS.yellow,
-              },
-              {
-                label: "Impact",
-                val: result.impactScore + "%",
-                color: COLORS.green,
-              },
-            ].map(({ label, val, color }) => (
-              <div
-                key={label}
-                style={{
-                  background: COLORS.surface,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  padding: "12px 20px",
-                  textAlign: "center",
-                  flex: 1,
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Space Mono'",
-                    fontSize: 22,
-                    fontWeight: 700,
-                    color,
-                  }}
-                >
-                  {val}
-                </div>
-                <div
-                  style={{ fontSize: 12, color: COLORS.textDim, marginTop: 4 }}
-                >
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Missing Keywords */}
-      {result.missingKeywords?.length > 0 && (
-        <Section
-          title="Missing Keywords"
-          icon="🔑"
-          delay={0.1}
-          accent={COLORS.accent}
-        >
-          <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 16 }}>
-            These high-value keywords were not found in your resume. Add them
-            where relevant.
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {result.missingKeywords.map((k, i) => (
-              <Tag key={i} text={k} color={COLORS.accent} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Weak Bullets */}
-      {result.weakBullets?.length > 0 && (
-        <Section
-          title="Weak Bullet Points"
-          icon="⚡"
-          delay={0.15}
-          accent={COLORS.yellow}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {result.weakBullets.map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  background: COLORS.surface,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  padding: 16,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    marginBottom: 8,
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: COLORS.red,
-                      fontSize: 14,
-                      flexShrink: 0,
-                      marginTop: 1,
-                    }}
-                  >
-                    ✗
-                  </span>
-                  <p
-                    style={{
-                      fontFamily: "'Space Mono'",
-                      fontSize: 12,
-                      color: COLORS.textDim,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {item.original}
-                  </p>
-                </div>
-                <div
-                  style={{ display: "flex", gap: 8, alignItems: "flex-start" }}
-                >
-                  <span
-                    style={{
-                      color: COLORS.green,
-                      fontSize: 14,
-                      flexShrink: 0,
-                      marginTop: 1,
-                    }}
-                  >
-                    ✓
-                  </span>
-                  <p
-                    style={{
-                      fontFamily: "'Space Mono'",
-                      fontSize: 12,
-                      color: COLORS.green,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {item.improved}
-                  </p>
-                </div>
-                <div
-                  style={{
-                    marginTop: 10,
-                    padding: "6px 12px",
-                    background: COLORS.yellow + "12",
-                    borderRadius: 4,
-                    fontSize: 12,
-                    color: COLORS.yellow,
-                  }}
-                >
-                  💡 {item.tip}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Formatting Issues */}
-      {result.formattingIssues?.length > 0 && (
-        <Section
-          title="Formatting Issues"
-          icon="📐"
-          delay={0.2}
-          accent={COLORS.red}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {result.formattingIssues.map((issue, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "flex-start",
-                  padding: 14,
-                  background: COLORS.surface,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                }}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0 }}>
-                  {issue.icon}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <p
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: COLORS.text,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {issue.title}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: COLORS.textDim,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {issue.detail}
-                  </p>
-                </div>
-                <Tag
-                  text={issue.severity}
-                  color={
-                    issue.severity === "Critical"
-                      ? COLORS.red
-                      : issue.severity === "Medium"
-                        ? COLORS.yellow
-                        : COLORS.accent
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Action Verbs */}
-      {result.actionVerbs?.length > 0 && (
-        <Section
-          title="Suggested Action Verbs"
-          icon="💪"
-          delay={0.25}
-          accent={COLORS.green}
-        >
-          <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 16 }}>
-            Replace weak verbs like{" "}
-            <em style={{ color: COLORS.red }}>"worked on"</em>,{" "}
-            <em style={{ color: COLORS.red }}>"helped"</em>,{" "}
-            <em style={{ color: COLORS.red }}>"did"</em> with powerful
-            alternatives:
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {result.actionVerbs.map((v, i) => (
-              <Tag key={i} text={v} color={COLORS.green} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Job Match */}
-      {result.jobMatch && (
-        <Section
-          title="Job Description Match"
-          icon="🎯"
-          delay={0.3}
-          accent={COLORS.accent}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: "50%",
-                background: `conic-gradient(${COLORS.accent} ${
-                  result.jobMatch.matchPercent * 3.6
-                }deg, ${COLORS.border} 0)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-              }}
-            >
-              <div
-                style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: "50%",
-                  background: COLORS.card,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "'Space Mono'",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: COLORS.accent,
-                }}
-              >
-                {result.jobMatch.matchPercent}%
-              </div>
-            </div>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 600 }}>Match Score</p>
-              <p style={{ fontSize: 13, color: COLORS.textDim, marginTop: 4 }}>
-                {result.jobMatch.verdict}
-              </p>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: COLORS.green,
-                  fontWeight: 600,
-                  marginBottom: 8,
-                }}
-              >
-                ✓ Matching Skills
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {result.jobMatch.matched?.map((k, i) => (
-                  <Tag key={i} text={k} color={COLORS.green} />
-                ))}
-              </div>
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: COLORS.red,
-                  fontWeight: 600,
-                  marginBottom: 8,
-                }}
-              >
-                ✗ Missing from JD
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {result.jobMatch.missing?.map((k, i) => (
-                  <Tag key={i} text={k} color={COLORS.red} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </Section>
-      )}
-
-      {/* Recommended Job Roles */}
-      {result.recommendedRoles?.length > 0 && (
-        <Section
-          title="Recommended Job Roles"
-          icon="💼"
-          delay={0.32}
-          accent={COLORS.green}
-        >
-          <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 16 }}>
-            Roles that best match your skills and experience, ranked by fit.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {result.recommendedRoles.map((role, i) => {
-              const q = encodeURIComponent(role.title);
-              const naukriQuery = role.title.toLowerCase().replace(/\s+/g, '-');
-              const links = [
-                {
-                  label: "LinkedIn",
-                  url: `https://www.linkedin.com/jobs/search/?keywords=${q}`,
-                },
-                {
-                  label: "Indeed",
-                  url: `https://www.indeed.com/jobs?q=${q}`,
-                },
-                {
-                  label: "Naukri",
-                  url: `https://www.naukri.com/${naukriQuery}-jobs`,
-                },
-              ];
-              return (
-                <div
-                  key={i}
-                  style={{
-                    background: COLORS.surface,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 8,
-                    padding: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: 12,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          color: COLORS.text,
-                        }}
-                      >
-                        {role.title}
-                      </p>
-                      {role.reason && (
-                        <p
-                          style={{
-                            fontSize: 13,
-                            color: COLORS.textDim,
-                            marginTop: 6,
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {role.reason}
-                        </p>
-                      )}
-                    </div>
-                    {typeof role.matchPercent === "number" && (
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          fontFamily: "'Space Mono'",
-                          fontSize: 16,
-                          fontWeight: 700,
-                          color: COLORS.green,
-                          background: COLORS.greenDim,
-                          border: `1px solid ${COLORS.green}44`,
-                          borderRadius: 20,
-                          padding: "4px 14px",
-                        }}
-                      >
-                        {role.matchPercent}% match
-                      </div>
-                    )}
-                  </div>
-
-                  {(role.matchedSkills?.length > 0 ||
-                    role.skillsToLearn?.length > 0) && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 20,
-                        flexWrap: "wrap",
-                        marginTop: 12,
-                      }}
-                    >
-                      {role.matchedSkills?.length > 0 && (
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              color: COLORS.green,
-                              fontWeight: 600,
-                              marginBottom: 6,
-                              textTransform: "uppercase",
-                              letterSpacing: 1,
-                            }}
-                          >
-                            ✓ You have
-                          </p>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 6,
-                            }}
-                          >
-                            {role.matchedSkills.map((s, j) => (
-                              <Tag key={j} text={s} color={COLORS.green} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {role.skillsToLearn?.length > 0 && (
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              color: COLORS.yellow,
-                              fontWeight: 600,
-                              marginBottom: 6,
-                              textTransform: "uppercase",
-                              letterSpacing: 1,
-                            }}
-                          >
-                            + Worth learning
-                          </p>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 6,
-                            }}
-                          >
-                            {role.skillsToLearn.map((s, j) => (
-                              <Tag key={j} text={s} color={COLORS.yellow} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      marginTop: 14,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {links.map((l) => (
-                      <a
-                        key={l.label}
-                        href={l.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: 12,
-                          color: COLORS.accent,
-                          border: `1px solid ${COLORS.accent}44`,
-                          background: COLORS.accentDim,
-                          padding: "5px 12px",
-                          borderRadius: 6,
-                          textDecoration: "none",
-                          fontFamily: "'Space Mono'",
-                        }}
-                      >
-                        Search on {l.label} →
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
-
-      {/* Quick Wins */}
-      {result.quickWins?.length > 0 && (
-        <Section
-          title="Quick Wins — Do These First"
-          icon="🚀"
-          delay={0.35}
-          accent={COLORS.green}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {result.quickWins.map((win, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "flex-start",
-                  padding: "10px 14px",
-                  background: COLORS.greenDim,
-                  border: `1px solid ${COLORS.green}33`,
-                  borderRadius: 8,
-                }}
-              >
-                <span
-                  style={{
-                    background: COLORS.green,
-                    color: COLORS.bg,
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <p
-                  style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.5 }}
-                >
-                  {win}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-    </div>
-  );
-}
-
 // ── AI Provider Layer ─────────────────────────────────────────────
-// Priority: Gemini (free tier) → OpenRouter (free models, with fallback chain)
-// If Gemini's key is missing, or Gemini hits its rate limit / quota / errors
-// out entirely, we transparently fall back to OpenRouter.
-
+// Priority: Gemini (free tier) → OpenRouter (free models)
 const GEMINI_MODELS = [
-  "gemini-3.6-flash", // Best free-tier quality/speed tradeoff
+  "gemini-3.6-flash",      // Best free-tier quality/speed tradeoff
   "gemini-3.5-flash-lite", // Backup Gemini model if 3.6 is rate-limited
 ];
 
-// Updated 2026 free OpenRouter models (tested working)
 const OPENROUTER_MODELS = [
-  "nvidia/nemotron-3-ultra-550b-a55b:free", // New strongest current free model
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
   "nousresearch/hermes-3-llama-3.1-405b:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
   "qwen/qwen3-next-80b-a3b-instruct:free",
   "meta-llama/llama-3.3-70b-instruct:free",
-  "openrouter/free", // Smart fallback router
+  "openrouter/free",
 ];
-
-// Any Gemini failure (missing key, rate limit, quota exhaustion, network
-// error, empty response, etc.) triggers an automatic fallback to OpenRouter.
 
 async function callGemini(prompt, apiKey) {
   let lastError = null;
@@ -1046,8 +566,6 @@ async function callGemini(prompt, apiKey) {
           `[gemini:${model}] ${data.error.message || data.error.status}`,
         );
         console.warn("Gemini model failed:", lastError.message);
-        // If it's specifically a quota/rate-limit error, try the next
-        // Gemini model in the list before giving up on Gemini entirely.
         continue;
       }
 
@@ -1099,7 +617,7 @@ async function callOpenRouter(prompt, apiKey) {
 
       if (data.error) {
         lastError = new Error(`[${model}] ${data.error.message || data.error}`);
-        console.warn("Model failed, trying next:", lastError.message);
+        console.warn("OpenRouter model failed, trying next:", lastError.message);
         continue;
       }
 
@@ -1113,22 +631,23 @@ async function callOpenRouter(prompt, apiKey) {
       return { text, provider: `OpenRouter (${model})` };
     } catch (err) {
       lastError = err;
-      console.warn(`Model ${model} failed:`, err.message);
+      console.warn(`OpenRouter model ${model} failed:`, err.message);
     }
   }
 
-  throw lastError || new Error("OpenRouter failed for an unknown reason");
+  throw lastError || new Error("All OpenRouter models failed");
 }
 
-// Tries Gemini first (if a key is configured), and only falls back to
-// OpenRouter if Gemini is missing, rate-limited, or errors out completely.
 async function getAIAnalysis(prompt) {
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+  const customGeminiKey = localStorage.getItem("resumeats_gemini_key")?.trim();
+  const customOpenRouterKey = localStorage.getItem("resumeats_openrouter_key")?.trim();
 
-  if (!geminiKey && !openRouterKey) {
+  const geminiKey = customGeminiKey || import.meta.env.VITE_GEMINI_API_KEY;
+  const openrouterKey = customOpenRouterKey || import.meta.env.VITE_OPENROUTER_API_KEY;
+
+  if (!geminiKey && !openrouterKey) {
     throw new Error(
-      "No AI API key configured. Add VITE_GEMINI_API_KEY and/or VITE_OPENROUTER_API_KEY to your .env file.",
+      "No AI API key found. Please add a VITE_GEMINI_API_KEY or VITE_OPENROUTER_API_KEY in your .env file, or click 'API Key Settings' in the top bar to set your key.",
     );
   }
 
@@ -1136,33 +655,699 @@ async function getAIAnalysis(prompt) {
     try {
       return await callGemini(prompt, geminiKey);
     } catch (err) {
-      console.warn(
-        "Gemini unavailable (quota, error, or all models failed) — falling back to OpenRouter:",
-        err.message,
-      );
+      console.warn("Gemini failed entirely, falling back to OpenRouter:", err.message);
     }
   }
 
-  if (openRouterKey) {
-    return await callOpenRouter(prompt, openRouterKey);
+  if (openrouterKey) {
+    return await callOpenRouter(prompt, openrouterKey);
   }
 
-  // Gemini failed and there's no OpenRouter key to fall back to.
   throw new Error(
-    "Gemini failed and no VITE_OPENROUTER_API_KEY is configured to fall back to.",
+    "Gemini failed and no OpenRouter API key is available for fallback.",
   );
 }
 
-export default function ResumeAnalyzer() {
+// ── Results Dashboard Component ─────────────────────────────────────
+function ResultsDashboard({ result, onReset, resumeText }) {
+  if (!result) return null;
+
+  const [copiedSummary, setCopiedSummary] = useState(false);
+
+  const scoreLabel =
+    result.atsScore >= 75
+      ? "ATS Friendly"
+      : result.atsScore >= 50
+        ? "Needs Work"
+        : "High Risk";
+
+  const scoreBadgeBg =
+    result.atsScore >= 75 ? COLORS.greenDim : result.atsScore >= 50 ? COLORS.yellowDim : COLORS.redDim;
+  const scoreBadgeColor =
+    result.atsScore >= 75 ? COLORS.green : result.atsScore >= 50 ? COLORS.yellow : COLORS.red;
+
+  const handleCopyReport = () => {
+    const reportText = `RESUME ATS ANALYSIS REPORT
+Overall ATS Score: ${result.atsScore}/100 (${scoreLabel})
+Keyword Match Score: ${result.keywordMatchScore}/100
+Formatting Score: ${result.formattingScore}/100
+Impact Score: ${result.impactScore}/100
+
+SUMMARY:
+${result.summary}
+
+MISSING KEYWORDS:
+${(result.missingKeywords || []).join(", ")}
+
+QUICK WINS:
+${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
+`;
+    navigator.clipboard.writeText(reportText);
+    setCopiedSummary(true);
+    setTimeout(() => setCopiedSummary(false), 2000);
+  };
+
+  const handleDownloadJSON = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "resume_ats_analysis.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, animation: "fadeUp 0.5s ease-out" }}>
+      {/* Top Banner Header */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${COLORS.card} 0%, ${COLORS.surface} 100%)`,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 20,
+          padding: 24,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 16,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div
+            style={{
+              padding: "10px 18px",
+              borderRadius: 14,
+              background: scoreBadgeBg,
+              border: `1px solid ${scoreBadgeColor}44`,
+              color: scoreBadgeColor,
+              fontWeight: 800,
+              fontSize: 14,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 18 }}>
+              {result.atsScore >= 75 ? "🎉" : result.atsScore >= 50 ? "⚠️" : "🚨"}
+            </span>
+            {scoreLabel}
+          </div>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "#ffffff" }}>
+              ATS Compatibility Assessment
+            </h2>
+            <p style={{ fontSize: 13, color: COLORS.textMuted }}>
+              Analyzed against standard resume parsing rules and keywords
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            onClick={handleCopyReport}
+            style={{
+              background: COLORS.surfaceHover,
+              border: `1px solid ${COLORS.border}`,
+              color: COLORS.text,
+              padding: "9px 16px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.2s",
+            }}
+          >
+            <Icons.Copy /> {copiedSummary ? "Copied!" : "Copy Report"}
+          </button>
+
+          <button
+            onClick={handleDownloadJSON}
+            style={{
+              background: COLORS.surfaceHover,
+              border: `1px solid ${COLORS.border}`,
+              color: COLORS.text,
+              padding: "9px 16px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.2s",
+            }}
+          >
+            <Icons.Document /> Export JSON
+          </button>
+
+          <button
+            onClick={onReset}
+            className="btn-hover"
+            style={{
+              background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`,
+              border: "none",
+              color: "#ffffff",
+              padding: "9px 18px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            Analyze Another
+          </button>
+        </div>
+      </div>
+
+      {/* 4 Core Score Gauges Grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 16,
+        }}
+      >
+        <ScoreGauge score={result.atsScore} label="Overall ATS" subtext="Parser match likelihood" />
+        <ScoreGauge score={result.keywordMatchScore} label="Keyword Density" subtext="Job title alignment" />
+        <ScoreGauge score={result.formattingScore} label="Format Quality" subtext="Layout & readability" />
+        <ScoreGauge score={result.impactScore} label="Bullet Impact" subtext="Action verbs & metrics" />
+      </div>
+
+      {/* Executive Summary */}
+      <SectionCard title="Executive Assessment Summary" icon={Icons.Sparkles} delay={0.08}>
+        <p
+          style={{
+            fontSize: 15,
+            lineHeight: 1.7,
+            color: COLORS.text,
+            background: COLORS.surface,
+            border: `1px solid ${COLORS.border}`,
+            padding: 18,
+            borderRadius: 12,
+          }}
+        >
+          {result.summary}
+        </p>
+
+        {result.jobMatch && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 16,
+              background: COLORS.accentDim,
+              border: `1px solid ${COLORS.borderGlow}`,
+              borderRadius: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 12,
+            }}
+          >
+            <div>
+              <span style={{ fontSize: 12, color: COLORS.accentLight, fontWeight: 700, textTransform: "uppercase" }}>
+                Target Job Fit Match
+              </span>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "#ffffff", marginTop: 2 }}>
+                {result.jobMatch.verdict}
+              </p>
+            </div>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                color: COLORS.accentLight,
+                fontFamily: "'JetBrains Mono'",
+              }}
+            >
+              {result.jobMatch.matchPercent}%
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Missing Keywords Section */}
+      <SectionCard
+        title="Missing Critical Keywords"
+        icon={Icons.Target}
+        delay={0.16}
+        badge={result.missingKeywords?.length ? `${result.missingKeywords.length} Missing` : null}
+      >
+        <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 14 }}>
+          ATS scanners search for specific industry skills. Add these missing keywords to your resume to increase keyword match percentage:
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {result.missingKeywords && result.missingKeywords.length > 0 ? (
+            result.missingKeywords.map((kw, i) => (
+              <Tag key={i} text={kw} color={COLORS.cyan} isCopyable={true} />
+            ))
+          ) : (
+            <p style={{ fontSize: 13, color: COLORS.green }}>✓ Excellent keyword coverage detected!</p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Bullet Points Improvement */}
+      <SectionCard
+        title="Bullet Point Enhancements"
+        icon={Icons.Sparkles}
+        delay={0.24}
+        badge={result.weakBullets?.length ? `${result.weakBullets.length} Recommendations` : null}
+      >
+        <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 16 }}>
+          Transform weak resume statements into high-impact accomplishment bullets with action verbs and quantifiable metrics:
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {result.weakBullets && result.weakBullets.length > 0 ? (
+            result.weakBullets.map((bullet, i) => (
+              <div
+                key={i}
+                style={{
+                  background: COLORS.surface,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 12,
+                  padding: 18,
+                }}
+              >
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: COLORS.red, fontWeight: 700, textTransform: "uppercase" }}>
+                    Original Version
+                  </span>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: COLORS.textMuted,
+                      background: COLORS.redDim,
+                      border: `1px solid ${COLORS.redBorder}`,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      marginTop: 4,
+                      textDecoration: "line-through",
+                    }}
+                  >
+                    "{bullet.original}"
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: COLORS.green, fontWeight: 700, textTransform: "uppercase" }}>
+                    Recommended High-Impact Rewrite
+                  </span>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "#ffffff",
+                      fontWeight: 600,
+                      background: COLORS.greenDim,
+                      border: `1px solid ${COLORS.greenBorder}`,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      marginTop: 4,
+                    }}
+                  >
+                    "{bullet.improved}"
+                  </p>
+                </div>
+
+                {bullet.tip && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.yellow }}>
+                    <span>💡</span>
+                    <span>{bullet.tip}</span>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <p style={{ fontSize: 13, color: COLORS.green }}>✓ Your resume bullet points are strong and metric-driven!</p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Formatting Audit */}
+      <SectionCard
+        title="Formatting & Structural Audit"
+        icon={Icons.AlertTriangle}
+        delay={0.3}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {result.formattingIssues && result.formattingIssues.length > 0 ? (
+            result.formattingIssues.map((issue, i) => {
+              const isCritical = issue.severity === "Critical";
+              const border = isCritical ? COLORS.redBorder : COLORS.yellowBorder;
+              const bg = isCritical ? COLORS.redDim : COLORS.yellowDim;
+              const color = isCritical ? COLORS.red : COLORS.yellow;
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    borderRadius: 12,
+                    padding: 16,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{issue.icon || (isCritical ? "🚨" : "⚠️")}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <h4 style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{issue.title}</h4>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          padding: "2px 8px",
+                          borderRadius: 10,
+                          background: color + "33",
+                          color: color,
+                        }}
+                      >
+                        {issue.severity || "Warning"}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 13, color: COLORS.textMuted }}>{issue.detail}</p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p style={{ fontSize: 13, color: COLORS.green }}>✓ No ATS formatting red flags detected!</p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Recommended Roles */}
+      <SectionCard
+        title="Recommended Job Roles & Alignment"
+        icon={Icons.Briefcase}
+        delay={0.36}
+      >
+        <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 16 }}>
+          Roles that best match your experience and skills, ranked by fit score:
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {result.recommendedRoles && result.recommendedRoles.length > 0 ? (
+            result.recommendedRoles.map((role, i) => {
+              const q = encodeURIComponent(role.title);
+              const naukriQuery = role.title.toLowerCase().replace(/\s+/g, "-");
+              const searchLinks = [
+                { label: "LinkedIn", url: `https://www.linkedin.com/jobs/search/?keywords=${q}` },
+                { label: "Indeed", url: `https://www.indeed.com/jobs?q=${q}` },
+                { label: "Naukri", url: `https://www.naukri.com/${naukriQuery}-jobs` },
+              ];
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    background: COLORS.surface,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 14,
+                    padding: 18,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
+                    <h4 style={{ fontSize: 17, fontWeight: 700, color: "#ffffff" }}>{role.title}</h4>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.accentLight }}>
+                        {role.matchPercent}% Match
+                      </span>
+                      <div style={{ width: 80, height: 6, background: COLORS.border, borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: `${role.matchPercent}%`, height: "100%", background: COLORS.accent }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 12 }}>{role.reason}</p>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {(role.matchedSkills || []).slice(0, 3).map((s, idx) => (
+                        <Tag key={idx} text={s} color={COLORS.green} />
+                      ))}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {searchLinks.map((link) => (
+                        <a
+                          key={link.label}
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: COLORS.accentLight,
+                            background: COLORS.accentDim,
+                            border: `1px solid ${COLORS.borderGlow}`,
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            textDecoration: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          {link.label} <Icons.External />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : null}
+        </div>
+      </SectionCard>
+
+      {/* Quick Wins */}
+      {result.quickWins && result.quickWins.length > 0 && (
+        <SectionCard title="Actionable Quick Wins" icon={Icons.Check} delay={0.42}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {result.quickWins.map((win, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  background: COLORS.surface,
+                  border: `1px solid ${COLORS.border}`,
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                }}
+              >
+                <span style={{ color: COLORS.green }}>✓</span>
+                <span style={{ fontSize: 14, color: COLORS.text, fontWeight: 500 }}>{win}</span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+// ── API Key Configuration Modal ─────────────────────────────────────
+function ApiKeyModal({ isOpen, onClose }) {
+  const [geminiKey, setGeminiKey] = useState("");
+  const [openrouterKey, setOpenrouterKey] = useState("");
+  const [savedMessage, setSavedMessage] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setGeminiKey(localStorage.getItem("resumeats_gemini_key") || "");
+      setOpenrouterKey(localStorage.getItem("resumeats_openrouter_key") || "");
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    localStorage.setItem("resumeats_gemini_key", geminiKey.trim());
+    localStorage.setItem("resumeats_openrouter_key", openrouterKey.trim());
+    setSavedMessage(true);
+    setTimeout(() => {
+      setSavedMessage(false);
+      onClose();
+    }, 1000);
+  };
+
+  const handleClear = () => {
+    localStorage.removeItem("resumeats_gemini_key");
+    localStorage.removeItem("resumeats_openrouter_key");
+    setGeminiKey("");
+    setOpenrouterKey("");
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        background: "rgba(0, 0, 0, 0.75)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          background: COLORS.card,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 20,
+          padding: 28,
+          width: "100%",
+          maxWidth: 480,
+          boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
+          animation: "fadeUp 0.25s ease-out",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ color: COLORS.accent }}>
+              <Icons.Gear />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#ffffff" }}>API Key Settings</h3>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: COLORS.textMuted,
+              fontSize: 20,
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 20 }}>
+          The app works automatically out of the box using default environment keys. You can also provide custom API keys below:
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.textMuted, marginBottom: 6 }}>
+              Gemini API Key (Primary)
+            </label>
+            <input
+              type="password"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              placeholder="AIzaSy..."
+              style={{
+                width: "100%",
+                background: COLORS.surface,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                color: "#ffffff",
+                fontSize: 13,
+                fontFamily: "'JetBrains Mono'",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: COLORS.textMuted, marginBottom: 6 }}>
+              OpenRouter API Key (Fallback)
+            </label>
+            <input
+              type="password"
+              value={openrouterKey}
+              onChange={(e) => setOpenrouterKey(e.target.value)}
+              placeholder="sk-or-v1-..."
+              style={{
+                width: "100%",
+                background: COLORS.surface,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                color: "#ffffff",
+                fontSize: 13,
+                fontFamily: "'JetBrains Mono'",
+                outline: "none",
+              }}
+            />
+          </div>
+        </div>
+
+        {savedMessage && (
+          <p style={{ color: COLORS.green, fontSize: 13, marginTop: 14, textAlign: "center" }}>
+            ✓ Keys saved successfully!
+          </p>
+        )}
+
+        <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
+          <button
+            onClick={handleClear}
+            style={{
+              background: "none",
+              border: `1px solid ${COLORS.border}`,
+              color: COLORS.textMuted,
+              padding: "10px 16px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            Clear Keys
+          </button>
+          <button
+            onClick={handleSave}
+            style={{
+              background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`,
+              border: "none",
+              color: "#ffffff",
+              padding: "10px 20px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Application Component ──────────────────────────────────────
+export default function App() {
   const [file, setFile] = useState(null);
   const [resumeText, setResumeText] = useState("");
   const [jobDesc, setJobDesc] = useState("");
+  const [state, setState] = useState("idle");
   const [isDragging, setIsDragging] = useState(false);
-  const [state, setState] = useState("idle"); // idle | loading | result | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showJD, setShowJD] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const fileRef = useRef();
   const dropRef = useRef();
 
@@ -1187,7 +1372,7 @@ export default function ResumeAnalyzer() {
   const extractTextFromPDF = useCallback(async (file) => {
     return new Promise((resolve, reject) => {
       if (!window.pdfjsLib) {
-        reject(new Error("PDF.js not loaded"));
+        reject(new Error("PDF.js library is loading, please try again in a few seconds"));
         return;
       }
       const reader = new FileReader();
@@ -1200,14 +1385,15 @@ export default function ResumeAnalyzer() {
           for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const content = await page.getTextContent();
-            fullText += content.items.map((item) => item.str).join(" ") + "\n";
+            const pageText = content.items.map((item) => item.str).join(" ");
+            fullText += pageText + "\n";
           }
-          resolve(fullText.trim());
+          resolve(fullText);
         } catch (err) {
           reject(err);
         }
       };
-      reader.onerror = reject;
+      reader.onerror = (err) => reject(err);
       reader.readAsArrayBuffer(file);
     });
   }, []);
@@ -1307,7 +1493,7 @@ export default function ResumeAnalyzer() {
     ]
   }
 
-  For "recommendedRoles": suggest 3-5 job roles ranked by best fit, based on the candidate's actual skills, projects, and experience in the resume${jobDesc ? " and how well they align with the provided job description's role" : ""}. Be realistic about seniority level (e.g. suggest entry-level/fresher roles if the resume shows no professional experience).
+  For "recommendedRoles": suggest 3-5 job roles ranked by best fit, based on the candidate's actual skills, projects, and experience in the resume${jobDesc ? " and how well they align with the provided job description's role" : ""}. Be realistic about seniority level.
 
   Be specific, honest, and actionable. Score conservatively.`;
 
@@ -1328,98 +1514,200 @@ export default function ResumeAnalyzer() {
       setError(
         err?.message?.startsWith("No AI API key")
           ? err.message
-          : "All available AI providers (Gemini + OpenRouter) are currently busy, rate-limited, or unavailable. Please try again in a few minutes.",
+          : "All available AI providers (Gemini + OpenRouter) are currently busy or rate-limited. Please try again in a few moments.",
       );
       setState("error");
     }
   };
+
+  const handleReset = () => {
+    setState("idle");
+    setResult(null);
+    setError("");
+    setFile(null);
+    setResumeText("");
+    setJobDesc("");
+  };
+
   return (
     <>
       <style>{globalStyles}</style>
-      <div
-        style={{
-          minHeight: "100vh",
-          background: COLORS.bg,
-          padding: "0 0 60px",
-        }}
-      >
-        {/* Header */}
-        <div
+
+      {/* API Key Modal */}
+      <ApiKeyModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        {/* Navigation Header */}
+        <header
           style={{
-            background: COLORS.surface,
+            background: "rgba(15, 23, 42, 0.8)",
+            backdropFilter: "blur(16px)",
             borderBottom: `1px solid ${COLORS.border}`,
-            padding: "20px 32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            padding: "16px 32px",
             position: "sticky",
             top: 0,
             zIndex: 100,
-            backdropFilter: "blur(20px)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                background: `linear-gradient(135deg, ${COLORS.accent}, #0066ff)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                animation: "pulse-ring 2s infinite",
-              }}
-            >
-              📄
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontFamily: "'Syne'",
-                  fontWeight: 800,
-                  fontSize: 18,
-                  background: `linear-gradient(90deg, ${COLORS.accent}, #fff)`,
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  letterSpacing: -0.5,
-                }}
-              >
-                ResumeATS
-              </h1>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: COLORS.muted,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                }}
-              >
-                AI-Powered Resume Analyzer
-              </p>
-            </div>
-          </div>
           <div
             style={{
-              background: COLORS.redDim,
-              border: `1px solid ${COLORS.red}44`,
-              color: COLORS.red,
-              padding: "6px 14px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 600,
+              maxWidth: 1100,
+              margin: "0 auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            ⚠ 75% of resumes fail ATS
-          </div>
-        </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.cyan})`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#ffffff",
+                  boxShadow: `0 0 16px ${COLORS.accent}66`,
+                }}
+              >
+                <Icons.Document />
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <h1
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      background: `linear-gradient(90deg, #ffffff, ${COLORS.accentLight})`,
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      letterSpacing: -0.4,
+                    }}
+                  >
+                    ResumeATS
+                  </h1>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      background: COLORS.accentDim,
+                      border: `1px solid ${COLORS.borderGlow}`,
+                      color: COLORS.accentLight,
+                      padding: "2px 8px",
+                      borderRadius: 10,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    PRO 2026
+                  </span>
+                </div>
+                <p style={{ fontSize: 11, color: COLORS.textDim }}>
+                  Enterprise AI Resume & ATS Optimization System
+                </p>
+              </div>
+            </div>
 
-        <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 20px" }}>
-          {/* Upload Zone */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  color: COLORS.green,
+                  background: COLORS.greenDim,
+                  border: `1px solid ${COLORS.greenBorder}`,
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  fontWeight: 600,
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: COLORS.green,
+                    boxShadow: `0 0 6px ${COLORS.green}`,
+                  }}
+                />
+                Dual AI Engine Ready
+              </div>
+
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                style={{
+                  background: COLORS.surfaceHover,
+                  border: `1px solid ${COLORS.border}`,
+                  color: COLORS.textMuted,
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  transition: "all 0.2s",
+                }}
+              >
+                <Icons.Gear /> API Keys
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main style={{ flex: 1, maxWidth: 1000, width: "100%", margin: "0 auto", padding: "40px 20px 80px" }}>
           {state === "idle" && (
-            <div style={{ animation: "fadeUp 0.5s ease-out" }}>
-              {/* Drop zone */}
+            <div style={{ animation: "fadeUp 0.4s ease-out" }}>
+              {/* Hero Banner */}
+              <div style={{ textAlign: "center", marginBottom: 36 }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: COLORS.accentDim,
+                    border: `1px solid ${COLORS.borderGlow}`,
+                    color: COLORS.accentLight,
+                    padding: "6px 16px",
+                    borderRadius: 20,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    marginBottom: 16,
+                  }}
+                >
+                  <Icons.Sparkles /> Maximize Interview Callback Rates
+                </div>
+                <h2
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 800,
+                    letterSpacing: -1,
+                    color: "#ffffff",
+                    marginBottom: 12,
+                    lineHeight: 1.25,
+                  }}
+                >
+                  Beat the ATS. Land Your Next Role.
+                </h2>
+                <p
+                  style={{
+                    fontSize: 16,
+                    color: COLORS.textMuted,
+                    maxWidth: 620,
+                    margin: "0 auto",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Over 75% of job applications are filtered out by Applicant Tracking Systems. Get instant AI feedback, keyword match analysis, and formatting suggestions.
+                </p>
+              </div>
+
+              {/* Upload Drop Zone Card */}
               <div
                 ref={dropRef}
                 onClick={() => !file && fileRef.current?.click()}
@@ -1437,16 +1725,19 @@ export default function ResumeAnalyzer() {
                         ? COLORS.green
                         : COLORS.border
                   }`,
-                  borderRadius: 16,
-                  padding: "56px 32px",
+                  borderRadius: 20,
+                  padding: "50px 32px",
                   textAlign: "center",
                   cursor: file ? "default" : "pointer",
                   background: isDragging
                     ? COLORS.accentDim
                     : file
                       ? COLORS.greenDim
-                      : COLORS.surface,
-                  transition: "all 0.2s ease",
+                      : COLORS.card,
+                  boxShadow: isDragging
+                    ? `0 0 30px ${COLORS.accentDim}`
+                    : "0 10px 40px rgba(0,0,0,0.4)",
+                  transition: "all 0.25s ease",
                   position: "relative",
                   overflow: "hidden",
                 }}
@@ -1457,9 +1748,9 @@ export default function ResumeAnalyzer() {
                       position: "absolute",
                       left: 0,
                       right: 0,
-                      height: 2,
+                      height: 3,
                       background: `linear-gradient(90deg, transparent, ${COLORS.accent}, transparent)`,
-                      animation: "scan 1s ease-in-out infinite",
+                      animation: "scanLine 1.5s ease-in-out infinite",
                     }}
                   />
                 )}
@@ -1474,35 +1765,38 @@ export default function ResumeAnalyzer() {
 
                 {file ? (
                   <div>
-                    <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 16,
+                        background: COLORS.greenDim,
+                        border: `1px solid ${COLORS.greenBorder}`,
+                        color: COLORS.green,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 16px",
+                      }}
+                    >
+                      <Icons.Check />
+                    </div>
                     <p
                       style={{
                         fontSize: 18,
                         fontWeight: 700,
-                        color: COLORS.green,
-                        marginBottom: 8,
+                        color: "#ffffff",
+                        marginBottom: 4,
                       }}
                     >
                       {file.name}
                     </p>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: COLORS.textDim,
-                        marginBottom: 4,
-                      }}
-                    >
-                      {(file.size / 1024).toFixed(1)} KB · PDF
+                    <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 8 }}>
+                      {(file.size / 1024).toFixed(1)} KB · PDF Document
                     </p>
                     {resumeText && (
-                      <p
-                        style={{
-                          fontSize: 12,
-                          color: COLORS.accent,
-                          fontFamily: "'Space Mono'",
-                        }}
-                      >
-                        ✓ {resumeText.split(/\s+/).length} words extracted
+                      <p style={{ fontSize: 12, color: COLORS.accentLight, fontFamily: "'JetBrains Mono'" }}>
+                        ✓ {resumeText.split(/\s+/).length} words extracted cleanly
                       </p>
                     )}
                     <button
@@ -1514,120 +1808,116 @@ export default function ResumeAnalyzer() {
                       }}
                       style={{
                         marginTop: 16,
-                        background: "none",
+                        background: COLORS.surfaceHover,
                         border: `1px solid ${COLORS.border}`,
-                        color: COLORS.textDim,
+                        color: COLORS.red,
                         padding: "6px 16px",
-                        borderRadius: 6,
+                        borderRadius: 8,
                         cursor: "pointer",
-                        fontSize: 13,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
                       }}
                     >
-                      Remove
+                      <Icons.Trash /> Remove File
                     </button>
                   </div>
                 ) : (
                   <div>
-                    <div style={{ fontSize: 52, marginBottom: 16 }}>📎</div>
-                    <h2
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 20,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Drop your resume here
-                    </h2>
-                    <p
-                      style={{
-                        color: COLORS.textDim,
-                        fontSize: 14,
-                        marginBottom: 16,
-                      }}
-                    >
-                      or click to browse · PDF files only
-                    </p>
                     <div
                       style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 20,
+                        background: COLORS.accentDim,
+                        border: `1px solid ${COLORS.borderGlow}`,
+                        color: COLORS.accentLight,
                         display: "flex",
-                        gap: 8,
+                        alignItems: "center",
                         justifyContent: "center",
-                        flexWrap: "wrap",
+                        margin: "0 auto 18px",
                       }}
                     >
-                      {[
-                        "ATS Score",
-                        "Keyword Gap",
-                        "Bullet Analysis",
-                        "Format Check",
-                      ].map((f) => (
-                        <Tag key={f} text={f} color={COLORS.accent} />
+                      <Icons.Upload />
+                    </div>
+                    <h3 style={{ fontWeight: 800, fontSize: 20, color: "#ffffff", marginBottom: 6 }}>
+                      Drag & Drop your resume here
+                    </h3>
+                    <p style={{ color: COLORS.textMuted, fontSize: 14, marginBottom: 20 }}>
+                      or click to browse files from your computer (.PDF format)
+                    </p>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      {["ATS Compatibility", "Keyword Gap Audit", "Bullet Impact Scoring", "Role Fit Check"].map((f) => (
+                        <Tag key={f} text={f} color={COLORS.accentLight} />
                       ))}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Job Description Toggle */}
-              <div style={{ marginTop: 20 }}>
+              {/* Job Description Accordion Box */}
+              <div style={{ marginTop: 24 }}>
                 <button
                   onClick={() => setShowJD(!showJD)}
                   style={{
-                    background: "none",
+                    background: COLORS.card,
                     border: `1px solid ${COLORS.border}`,
-                    color: showJD ? COLORS.accent : COLORS.textDim,
-                    padding: "10px 20px",
-                    borderRadius: 8,
+                    color: showJD ? COLORS.accentLight : COLORS.textMuted,
+                    padding: "12px 20px",
+                    borderRadius: 12,
                     cursor: "pointer",
                     fontSize: 14,
-                    fontFamily: "'Syne'",
                     fontWeight: 600,
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
+                    gap: 10,
+                    width: "100%",
+                    justifyContent: "space-between",
                     transition: "all 0.2s",
                   }}
                 >
-                  <span>{showJD ? "▼" : "▶"}</span>
-                  Add Job Description (optional but recommended)
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Icons.Briefcase />
+                    <span>Target Job Description (Optional for Keyword Matching)</span>
+                  </div>
+                  <span>{showJD ? "▲" : "▼"}</span>
                 </button>
 
                 {showJD && (
                   <div
                     style={{
                       marginTop: 12,
+                      background: COLORS.card,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: 14,
+                      padding: 16,
                       animation: "fadeUp 0.3s ease-out",
                     }}
                   >
                     <textarea
                       value={jobDesc}
                       onChange={(e) => setJobDesc(e.target.value)}
-                      placeholder="Paste the job description here to get a match score and targeted keyword suggestions..."
+                      placeholder="Paste the target job description here to evaluate exact keyword alignment, missing skills, and role match percentage..."
+                      rows={5}
                       style={{
                         width: "100%",
-                        minHeight: 160,
                         background: COLORS.surface,
                         border: `1px solid ${COLORS.border}`,
-                        borderRadius: 8,
-                        padding: 16,
-                        color: COLORS.text,
+                        borderRadius: 10,
+                        padding: 14,
+                        color: "#ffffff",
                         fontSize: 14,
-                        fontFamily: "'Space Mono'",
-                        lineHeight: 1.6,
                         resize: "vertical",
                         outline: "none",
+                        lineHeight: 1.5,
                       }}
                     />
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: COLORS.textDim,
-                        marginTop: 6,
-                      }}
-                    >
-                      Adding a JD enables job match scoring and targeted keyword
-                      analysis
-                    </p>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: COLORS.textDim }}>
+                      <span>Tip: Including a JD unlocks job-specific match scoring.</span>
+                      <span>{jobDesc.length} characters</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1636,197 +1926,136 @@ export default function ResumeAnalyzer() {
               <button
                 onClick={analyzeResume}
                 disabled={!file}
+                className="btn-hover"
                 style={{
-                  marginTop: 24,
                   width: "100%",
-                  padding: "18px 32px",
+                  marginTop: 28,
                   background: file
-                    ? `linear-gradient(135deg, ${COLORS.accent}22, #0066ff22)`
-                    : COLORS.surface,
-                  border: `1px solid ${file ? COLORS.accent : COLORS.border}`,
-                  borderRadius: 12,
-                  color: file ? COLORS.accent : COLORS.muted,
+                    ? `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`
+                    : COLORS.surfaceHover,
+                  border: "none",
+                  color: file ? "#ffffff" : COLORS.textDim,
+                  padding: "16px 28px",
+                  borderRadius: 14,
                   fontSize: 16,
-                  fontWeight: 700,
-                  fontFamily: "'Syne'",
+                  fontWeight: 800,
                   cursor: file ? "pointer" : "not-allowed",
-                  letterSpacing: 1,
-                  transition: "all 0.2s",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 12,
-                  boxShadow: file ? `0 0 30px ${COLORS.accent}22` : "none",
+                  gap: 10,
+                  boxShadow: file ? `0 10px 30px ${COLORS.accentDim}` : "none",
+                  transition: "all 0.25s ease",
                 }}
               >
-                <span style={{ fontSize: 20 }}>🔍</span>
-                Analyze Resume with AI
-                {file && (
-                  <span
-                    style={{
-                      fontFamily: "'Space Mono'",
-                      fontSize: 12,
-                      opacity: 0.7,
-                    }}
-                  >
-                    →
-                  </span>
-                )}
+                <Icons.Sparkles /> Analyze Resume Now
               </button>
 
-              {/* Info Strip */}
+              {/* Security & Guarantee Trust Bar */}
               <div
                 style={{
-                  marginTop: 20,
                   display: "flex",
-                  gap: 12,
+                  justifyContent: "center",
+                  gap: 28,
+                  marginTop: 32,
+                  fontSize: 13,
+                  color: COLORS.textDim,
                   flexWrap: "wrap",
                 }}
               >
-                {[
-                  { icon: "🤖", text: "Gemini + OpenRouter fallback AI" }, // Gemini first, auto-falls back on limits
-                  { icon: "🔒", text: "Your resume is not stored" },
-                  { icon: "⚡", text: "Results in ~15 seconds" },
-                ].map(({ icon, text }) => (
-                  <div
-                    key={text}
-                    style={{
-                      flex: 1,
-                      minWidth: 160,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "10px 14px",
-                      background: COLORS.surface,
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: 8,
-                      fontSize: 13,
-                      color: COLORS.textDim,
-                    }}
-                  >
-                    <span>{icon}</span>
-                    {text}
-                  </div>
-                ))}
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icons.Shield /> 100% Client-Side Privacy
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icons.Sparkles /> Gemini 3.6 Flash & OpenRouter AI
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icons.Check /> Zero Data Logging
+                </span>
               </div>
             </div>
           )}
 
-          {/* Loading */}
+          {/* Loading Screen */}
           {state === "loading" && <LoadingAnalysis />}
 
-          {/* Error */}
+          {/* Results Screen */}
+          {state === "result" && (
+            <ResultsDashboard
+              result={result}
+              onReset={handleReset}
+              resumeText={resumeText}
+            />
+          )}
+
+          {/* Error Screen */}
           {state === "error" && (
             <div
               style={{
-                background: COLORS.redDim,
-                border: `1px solid ${COLORS.red}44`,
-                borderRadius: 12,
-                padding: 32,
+                background: COLORS.card,
+                border: `1px solid ${COLORS.redBorder}`,
+                borderRadius: 20,
+                padding: 36,
                 textAlign: "center",
-                animation: "fadeUp 0.5s ease-out",
+                animation: "fadeUp 0.4s ease-out",
               }}
             >
-              <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-              <h3
-                style={{
-                  color: COLORS.red,
-                  fontWeight: 700,
-                  marginBottom: 8,
-                }}
-              >
-                Analysis Failed
-              </h3>
-              <p
-                style={{
-                  color: COLORS.textDim,
-                  fontSize: 14,
-                  marginBottom: 20,
-                  fontFamily: "'Space Mono'",
-                  lineHeight: 1.6,
-                }}
-              >
-                {error}
-              </p>
-              <button
-                onClick={() => setState("idle")}
-                style={{
-                  background: COLORS.red + "22",
-                  border: `1px solid ${COLORS.red}`,
-                  color: COLORS.red,
-                  padding: "10px 24px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  fontFamily: "'Syne'",
-                  fontWeight: 600,
-                  fontSize: 14,
-                }}
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {/* Results */}
-          {state === "result" && result && (
-            <div>
               <div
                 style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 18,
+                  background: COLORS.redDim,
+                  color: COLORS.red,
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 24,
-                  flexWrap: "wrap",
-                  gap: 12,
+                  justifyContent: "center",
+                  margin: "0 auto 20px",
                 }}
               >
-                <div>
-                  <h2
-                    style={{
-                      fontWeight: 800,
-                      fontSize: 22,
-                      marginBottom: 4,
-                    }}
-                  >
-                    Analysis Complete
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: COLORS.textDim,
-                      fontFamily: "'Space Mono'",
-                    }}
-                  >
-                    {file?.name}
-                  </p>
-                </div>
+                <Icons.AlertTriangle />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: "#ffffff", marginBottom: 10 }}>
+                Analysis Encountered an Issue
+              </h3>
+              <p style={{ color: COLORS.textMuted, fontSize: 14, maxWidth: 520, margin: "0 auto 24px", lineHeight: 1.6 }}>
+                {error}
+              </p>
+              <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
                 <button
-                  onClick={() => {
-                    setState("idle");
-                    setResult(null);
-                    setFile(null);
-                    setResumeText("");
-                    if (fileRef.current) fileRef.current.value = "";
-                  }}
+                  onClick={() => setIsSettingsOpen(true)}
                   style={{
-                    background: COLORS.surface,
+                    background: COLORS.surfaceHover,
                     border: `1px solid ${COLORS.border}`,
-                    color: COLORS.textDim,
+                    color: COLORS.text,
                     padding: "10px 20px",
-                    borderRadius: 8,
+                    borderRadius: 10,
                     cursor: "pointer",
-                    fontFamily: "'Syne'",
-                    fontWeight: 600,
                     fontSize: 14,
+                    fontWeight: 600,
                   }}
                 >
-                  ← Analyze Another
+                  Configure API Keys
+                </button>
+                <button
+                  onClick={analyzeResume}
+                  style={{
+                    background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`,
+                    border: "none",
+                    color: "#ffffff",
+                    padding: "10px 24px",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                >
+                  Try Again
                 </button>
               </div>
-              <ResultsDashboard result={result} />
             </div>
           )}
-        </div>
+        </main>
       </div>
     </>
   );
