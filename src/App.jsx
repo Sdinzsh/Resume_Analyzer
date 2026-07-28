@@ -345,6 +345,7 @@ function LoadingAnalysis() {
 }
 
 function ResultsDashboard({ result }) {
+  if (!result) return null;
   const scoreLabel =
     result.atsScore >= 75
       ? "ATS Friendly"
@@ -750,6 +751,199 @@ function ResultsDashboard({ result }) {
         </Section>
       )}
 
+      {/* Recommended Job Roles */}
+      {result.recommendedRoles?.length > 0 && (
+        <Section
+          title="Recommended Job Roles"
+          icon="💼"
+          delay={0.32}
+          accent={COLORS.green}
+        >
+          <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 16 }}>
+            Roles that best match your skills and experience, ranked by fit.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {result.recommendedRoles.map((role, i) => {
+              const q = encodeURIComponent(role.title);
+              const naukriQuery = role.title.toLowerCase().replace(/\s+/g, '-');
+              const links = [
+                {
+                  label: "LinkedIn",
+                  url: `https://www.linkedin.com/jobs/search/?keywords=${q}`,
+                },
+                {
+                  label: "Indeed",
+                  url: `https://www.indeed.com/jobs?q=${q}`,
+                },
+                {
+                  label: "Naukri",
+                  url: `https://www.naukri.com/${naukriQuery}-jobs`,
+                },
+              ];
+              return (
+                <div
+                  key={i}
+                  style={{
+                    background: COLORS.surface,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 8,
+                    padding: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: COLORS.text,
+                        }}
+                      >
+                        {role.title}
+                      </p>
+                      {role.reason && (
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: COLORS.textDim,
+                            marginTop: 6,
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {role.reason}
+                        </p>
+                      )}
+                    </div>
+                    {typeof role.matchPercent === "number" && (
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          fontFamily: "'Space Mono'",
+                          fontSize: 16,
+                          fontWeight: 700,
+                          color: COLORS.green,
+                          background: COLORS.greenDim,
+                          border: `1px solid ${COLORS.green}44`,
+                          borderRadius: 20,
+                          padding: "4px 14px",
+                        }}
+                      >
+                        {role.matchPercent}% match
+                      </div>
+                    )}
+                  </div>
+
+                  {(role.matchedSkills?.length > 0 ||
+                    role.skillsToLearn?.length > 0) && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 20,
+                        flexWrap: "wrap",
+                        marginTop: 12,
+                      }}
+                    >
+                      {role.matchedSkills?.length > 0 && (
+                        <div>
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: COLORS.green,
+                              fontWeight: 600,
+                              marginBottom: 6,
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
+                            ✓ You have
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                            }}
+                          >
+                            {role.matchedSkills.map((s, j) => (
+                              <Tag key={j} text={s} color={COLORS.green} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {role.skillsToLearn?.length > 0 && (
+                        <div>
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: COLORS.yellow,
+                              fontWeight: 600,
+                              marginBottom: 6,
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
+                            + Worth learning
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                            }}
+                          >
+                            {role.skillsToLearn.map((s, j) => (
+                              <Tag key={j} text={s} color={COLORS.yellow} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      marginTop: 14,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {links.map((l) => (
+                      <a
+                        key={l.label}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: 12,
+                          color: COLORS.accent,
+                          border: `1px solid ${COLORS.accent}44`,
+                          background: COLORS.accentDim,
+                          padding: "5px 12px",
+                          borderRadius: 6,
+                          textDecoration: "none",
+                          fontFamily: "'Space Mono'",
+                        }}
+                      >
+                        Search on {l.label} →
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
       {/* Quick Wins */}
       {result.quickWins?.length > 0 && (
         <Section
@@ -803,6 +997,162 @@ function ResultsDashboard({ result }) {
   );
 }
 
+// ── AI Provider Layer ─────────────────────────────────────────────
+// Priority: Gemini (free tier) → OpenRouter (free models, with fallback chain)
+// If Gemini's key is missing, or Gemini hits its rate limit / quota / errors
+// out entirely, we transparently fall back to OpenRouter.
+
+const GEMINI_MODELS = [
+  "gemini-3.6-flash", // Best free-tier quality/speed tradeoff
+  "gemini-3.5-flash-lite", // Backup Gemini model if 3.6 is rate-limited
+];
+
+// Updated 2026 free OpenRouter models (tested working)
+const OPENROUTER_MODELS = [
+  "nvidia/nemotron-3-ultra-550b-a55b:free", // New strongest current free model
+  "nousresearch/hermes-3-llama-3.1-405b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "openrouter/free", // Smart fallback router
+];
+
+// Any Gemini failure (missing key, rate limit, quota exhaustion, network
+// error, empty response, etc.) triggers an automatic fallback to OpenRouter.
+
+async function callGemini(prompt, apiKey) {
+  let lastError = null;
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      console.log(`Trying Gemini model: ${model}`);
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 4000, temperature: 0.7 },
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (data.error) {
+        lastError = new Error(
+          `[gemini:${model}] ${data.error.message || data.error.status}`,
+        );
+        console.warn("Gemini model failed:", lastError.message);
+        // If it's specifically a quota/rate-limit error, try the next
+        // Gemini model in the list before giving up on Gemini entirely.
+        continue;
+      }
+
+      const text =
+        data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ||
+        "";
+
+      if (!text) {
+        lastError = new Error(`[gemini:${model}] Empty response`);
+        continue;
+      }
+
+      return { text, provider: `Gemini (${model})` };
+    } catch (err) {
+      lastError = err;
+      console.warn(`Gemini model ${model} failed:`, err.message);
+    }
+  }
+
+  throw lastError || new Error("Gemini failed for an unknown reason");
+}
+
+async function callOpenRouter(prompt, apiKey) {
+  let lastError = null;
+
+  for (const model of OPENROUTER_MODELS) {
+    try {
+      console.log(`Trying OpenRouter model: ${model}`);
+
+      const res = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": window.location.origin,
+            "X-Title": "ResumeATS",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 4000,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (data.error) {
+        lastError = new Error(`[${model}] ${data.error.message || data.error}`);
+        console.warn("Model failed, trying next:", lastError.message);
+        continue;
+      }
+
+      const text = data.choices?.[0]?.message?.content || "";
+
+      if (!text) {
+        lastError = new Error(`[${model}] Empty response`);
+        continue;
+      }
+
+      return { text, provider: `OpenRouter (${model})` };
+    } catch (err) {
+      lastError = err;
+      console.warn(`Model ${model} failed:`, err.message);
+    }
+  }
+
+  throw lastError || new Error("OpenRouter failed for an unknown reason");
+}
+
+// Tries Gemini first (if a key is configured), and only falls back to
+// OpenRouter if Gemini is missing, rate-limited, or errors out completely.
+async function getAIAnalysis(prompt) {
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+  if (!geminiKey && !openRouterKey) {
+    throw new Error(
+      "No AI API key configured. Add VITE_GEMINI_API_KEY and/or VITE_OPENROUTER_API_KEY to your .env file.",
+    );
+  }
+
+  if (geminiKey) {
+    try {
+      return await callGemini(prompt, geminiKey);
+    } catch (err) {
+      console.warn(
+        "Gemini unavailable (quota, error, or all models failed) — falling back to OpenRouter:",
+        err.message,
+      );
+    }
+  }
+
+  if (openRouterKey) {
+    return await callOpenRouter(prompt, openRouterKey);
+  }
+
+  // Gemini failed and there's no OpenRouter key to fall back to.
+  throw new Error(
+    "Gemini failed and no VITE_OPENROUTER_API_KEY is configured to fall back to.",
+  );
+}
+
 export default function ResumeAnalyzer() {
   const [file, setFile] = useState(null);
   const [resumeText, setResumeText] = useState("");
@@ -821,7 +1171,9 @@ export default function ResumeAnalyzer() {
       setPdfReady(true);
       return;
     }
+    if (document.getElementById("pdfjs-script")) return;
     const script = document.createElement("script");
+    script.id = "pdfjs-script";
     script.src =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
     script.onload = () => {
@@ -881,7 +1233,7 @@ export default function ResumeAnalyzer() {
   const handleFileInput = useCallback(
     async (e) => {
       const selected = e.target.files[0];
-      if (selected) {
+      if (selected && selected.type === "application/pdf") {
         setFile(selected);
         try {
           const text = await extractTextFromPDF(selected);
@@ -943,77 +1295,43 @@ export default function ResumeAnalyzer() {
       "missing": ["skill1"]
     }`
         : '"jobMatch": null'
-    }
+    },
+    "recommendedRoles": [
+      {
+        "title": "<specific job title, e.g. 'Backend Developer'>",
+        "matchPercent": <number 0-100>,
+        "reason": "<1-2 sentence explanation of why this role fits the candidate>",
+        "matchedSkills": ["skill1", "skill2"],
+        "skillsToLearn": ["skill1"]
+      }
+    ]
   }
+
+  For "recommendedRoles": suggest 3-5 job roles ranked by best fit, based on the candidate's actual skills, projects, and experience in the resume${jobDesc ? " and how well they align with the provided job description's role" : ""}. Be realistic about seniority level (e.g. suggest entry-level/fresher roles if the resume shows no professional experience).
 
   Be specific, honest, and actionable. Score conservatively.`;
 
-    // Updated 2026 free models (tested working)
-    const MODELS = [
-      "nvidia/nemotron-3-ultra-550b-a55b:free", // New strongest current free model
-      "nousresearch/hermes-3-llama-3.1-405b:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "qwen/qwen3-next-80b-a3b-instruct:free",
-      "meta-llama/llama-3.3-70b-instruct:free",
-      "openrouter/free", // Smart fallback router
-    ];
+    try {
+      const { text, provider } = await getAIAnalysis(prompt);
 
-    let lastError = null;
-
-    for (const model of MODELS) {
-      try {
-        console.log(`Trying model: ${model}`);
-
-        const res = await fetch(
-          "https://openrouter.ai/api/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-              "HTTP-Referer": window.location.origin,
-              "X-Title": "ResumeATS",
-            },
-            body: JSON.stringify({
-              model,
-              max_tokens: 4000,
-              messages: [{ role: "user", content: prompt }],
-            }),
-          },
-        );
-
-        const data = await res.json();
-
-        if (data.error) {
-          lastError = new Error(`[${model}] ${data.error.message}`);
-          console.warn("Model failed, trying next:", lastError.message);
-          continue;
-        }
-
-        const text = data.choices?.[0]?.message?.content || "";
-
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          lastError = new Error(`[${model}] No JSON found`);
-          continue;
-        }
-
-        const parsed = JSON.parse(jsonMatch[0]);
-        setResult(parsed);
-        setState("result");
-        console.log("✅ Analysis successful with:", model);
-        return; // Success → stop here
-      } catch (err) {
-        lastError = err;
-        console.warn(`Model ${model} failed:`, err.message);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(`[${provider}] No JSON found in response`);
       }
-    }
 
-    // All models failed
-    setError(
-      "All available free models are currently busy or unavailable. Please try again in a few minutes.",
-    );
-    setState("error");
+      const parsed = JSON.parse(jsonMatch[0]);
+      setResult(parsed);
+      setState("result");
+      console.log(`✅ Analysis successful via ${provider}`);
+    } catch (err) {
+      console.error("Analysis failed:", err?.message || err);
+      setError(
+        err?.message?.startsWith("No AI API key")
+          ? err.message
+          : "All available AI providers (Gemini + OpenRouter) are currently busy, rate-limited, or unavailable. Please try again in a few minutes.",
+      );
+      setState("error");
+    }
   };
   return (
     <>
@@ -1366,7 +1684,7 @@ export default function ResumeAnalyzer() {
                 }}
               >
                 {[
-                  { icon: "🤖", text: "OpenRouter Free AI analysis" }, // Auto-selects best free model
+                  { icon: "🤖", text: "Gemini + OpenRouter fallback AI" }, // Gemini first, auto-falls back on limits
                   { icon: "🔒", text: "Your resume is not stored" },
                   { icon: "⚡", text: "Results in ~15 seconds" },
                 ].map(({ icon, text }) => (

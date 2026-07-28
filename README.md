@@ -5,7 +5,8 @@
 ![ResumeATS Banner](https://img.shields.io/badge/ResumeATS-AI%20Powered-00e5ff?style=for-the-badge&logo=readthedocs&logoColor=white)
 ![React](https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-Build%20Tool-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![OpenRouter](https://img.shields.io/badge/OpenRouter-Free%20AI-00ff88?style=for-the-badge)
+![Gemini](https://img.shields.io/badge/Gemini-Free%20AI-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)
+![OpenRouter](https://img.shields.io/badge/OpenRouter-Fallback%20AI-00ff88?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
 **Instantly analyze your resume against ATS systems using free AI models.**  
@@ -45,8 +46,9 @@ Get a score, fix weak bullets, identify missing keywords, and match job descript
 | 📐 **Formatting Checker** | Flags ATS-breaking formatting issues with severity levels |
 | 💪 **Action Verb Suggestions** | Replaces weak verbs like *"helped"* or *"worked on"* |
 | 🎯 **Job Description Match** | Paste a JD to get a match % with matched/missing skills |
+| 💼 **Job Role Recommendations** | AI suggests 3-5 job titles that fit your skills, with matched skills, skill gaps, and one-click search links |
 | 🚀 **Quick Wins** | Prioritized, actionable list of the most impactful fixes |
-| 🤖 **Multi-Model Fallback** | Tries multiple free AI models automatically if one fails |
+| 🤖 **Gemini + OpenRouter Fallback** | Tries Gemini first; if it's rate-limited or unavailable, automatically falls back to multiple free OpenRouter models |
 | 🔒 **Privacy First** | Your resume is never stored — all processing is client-side |
 
 ---
@@ -56,18 +58,26 @@ Get a score, fix weak bullets, identify missing keywords, and match job descript
 - **Framework:** [React 18](https://react.dev/) with Hooks
 - **Build Tool:** [Vite](https://vitejs.dev/)
 - **PDF Parsing:** [PDF.js v3.11](https://mozilla.github.io/pdf.js/) (loaded via CDN)
-- **AI Backend:** [OpenRouter API](https://openrouter.ai/) (free-tier models)
+- **AI Backend:** [Google Gemini](https://ai.google.dev/) (primary, free tier) with automatic fallback to [OpenRouter](https://openrouter.ai/) (free-tier models)
 - **Fonts:** [Space Mono](https://fonts.google.com/specimen/Space+Mono) + [Syne](https://fonts.google.com/specimen/Syne) via Google Fonts
 - **Styling:** Pure inline CSS with CSS animations (no external UI library)
 
-### 🤖 AI Models Used (with automatic fallback)
+### 🤖 AI Providers Used (with automatic fallback)
+
+Gemini is tried first. If it's missing a key, rate-limited, or errors out, the app transparently falls back to OpenRouter's model chain — no user action needed.
 
 ```
-nvidia/nemotron-3-super-120b-a12b:free  ← Primary (strongest)
-deepseek/deepseek-r1:free
-arcee-ai/trinity-large-preview:free
-z-ai/glm-4.5-air:free
-openrouter/free                         ← Smart fallback router
+1️⃣ Gemini (primary)
+   gemini-3.6-flash                        ← Primary
+   gemini-3.5-flash-lite                   ← Backup Gemini model
+
+2️⃣ OpenRouter (fallback, only if Gemini is unavailable)
+   nvidia/nemotron-3-ultra-550b-a55b:free  ← Primary
+   nousresearch/hermes-3-llama-3.1-405b:free
+   nvidia/nemotron-3-super-120b-a12b:free
+   qwen/qwen3-next-80b-a3b-instruct:free
+   meta-llama/llama-3.3-70b-instruct:free
+   openrouter/free                         ← Smart fallback router
 ```
 
 ---
@@ -78,14 +88,14 @@ openrouter/free                         ← Smart fallback router
 
 - [Node.js](https://nodejs.org/) v18 or higher
 - [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- A free [OpenRouter](https://openrouter.ai/) API key
+- A free [Gemini](https://aistudio.google.com/apikey) API key (recommended, primary provider) and/or a free [OpenRouter](https://openrouter.ai/) API key (fallback provider)
 
 ### Installation
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/Sdinzsh/Resume_analyser.git
-cd Resume_analyser
+git clone https://github.com/Sdinzsh/Resume_Analyzer.git
+cd Resume_Analyzer
 ```
 
 **2. Install dependencies**
@@ -98,11 +108,15 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
+# Gemini is tried first; OpenRouter is the automatic fallback if Gemini
+# is missing, rate-limited, or unavailable. Set either one, or both.
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
 VITE_OPENROUTER_API_KEY=your_openrouter_api_key_here
 ```
 
-> 🔑 Get your free API key at [openrouter.ai/keys](https://openrouter.ai/keys)  
-> The free tier is sufficient — no credit card required.
+> 🔑 Get a free Gemini key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)  
+> 🔑 Get a free OpenRouter key at [openrouter.ai/keys](https://openrouter.ai/keys)  
+> Both free tiers are sufficient — no credit card required. You only need one key to run the app, but setting both gives you automatic failover if Gemini's daily free-tier limit is reached.
 
 **4. Start the development server**
 ```bash
@@ -119,7 +133,7 @@ http://localhost:5173
 ## 🏗️ Project Structure
 
 ```
-Resume_analyser/
+Resume_Analyzer/
 ├── src/
 │   └── App.jsx              # Main application (single-file architecture)
 │       ├── ScoreGauge       # Animated circular ATS score gauge
@@ -142,16 +156,16 @@ Resume_analyser/
 ## 📖 How It Works
 
 ```
-┌──────────┐    ┌───────────┐    ┌──────────────────┐    ┌──────────────┐
-│  Upload  │───▶│  PDF.js   │───▶│  OpenRouter API  │───▶│   Results    │
-│  PDF     │    │  Extract  │    │  (Free AI Model) │    │  Dashboard   │
-│  Resume  │    │  Text     │    │  JSON Analysis   │    │              │
-└──────────┘    └───────────┘    └──────────────────┘    └──────────────┘
+┌──────────┐    ┌───────────┐    ┌───────────────────────┐    ┌──────────────┐
+│  Upload  │───▶│  PDF.js   │───▶│  Gemini → OpenRouter   │───▶│   Results    │
+│  PDF     │    │  Extract  │    │  (auto fallback chain) │    │  Dashboard   │
+│  Resume  │    │  Text     │    │  JSON Analysis         │    │              │
+└──────────┘    └───────────┘    └───────────────────────┘    └──────────────┘
 ```
 
 1. **Upload** — User drags & drops or selects a PDF resume
 2. **Extract** — PDF.js extracts raw text client-side (no server upload)
-3. **Prompt** — A detailed prompt is sent to OpenRouter's free AI API
+3. **Prompt** — A detailed prompt is sent to Gemini first; if it's unavailable, the app automatically retries with OpenRouter's free models
 4. **Parse** — The JSON response is validated and parsed
 5. **Display** — Results are rendered in the animated dashboard
 
@@ -194,7 +208,16 @@ The AI returns a structured JSON object:
     "verdict": "Good match but missing key cloud skills.",
     "matched": ["React", "Node.js", "SQL"],
     "missing": ["AWS", "Terraform"]
-  }
+  },
+  "recommendedRoles": [
+    {
+      "title": "Backend Developer",
+      "matchPercent": 82,
+      "reason": "Strong REST API and database experience align well with this role.",
+      "matchedSkills": ["Node.js", "REST API", "SQL"],
+      "skillsToLearn": ["Docker", "AWS"]
+    }
+  ]
 }
 ```
 
@@ -258,7 +281,7 @@ git push origin feature/AmazingFeature
 
 - **PDF only** — `.docx` and other formats are not currently supported
 - **Text-based PDFs only** — Scanned/image-based PDFs cannot be parsed by PDF.js
-- **Free AI rate limits** — Free OpenRouter models may occasionally be busy; the app retries automatically across 5 models
+- **Free AI rate limits** — Gemini's free tier has a daily quota; once reached, the app automatically falls back to OpenRouter's free models
 - **No persistent storage** — Analysis results are lost on page refresh (by design, for privacy)
 
 ---
@@ -268,8 +291,8 @@ git push origin feature/AmazingFeature
 - ✅ Your resume text is never stored on any server
 - ✅ PDF parsing happens entirely in your browser via PDF.js
 - ✅ Only the extracted text is sent to the AI API (not the file itself)
-- ✅ The OpenRouter API key is kept in `.env` and never exposed in the UI
-- ⚠️ Be mindful that resume text is sent to third-party AI model providers via OpenRouter
+- ✅ API keys are kept in `.env` (gitignored) and never exposed in the UI
+- ⚠️ Be mindful that resume text is sent to third-party AI providers (Google Gemini and/or OpenRouter)
 
 ---
 
@@ -281,24 +304,26 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 🙏 Acknowledgements
 
-- [OpenRouter](https://openrouter.ai/) — Free AI model routing
+- [Google Gemini](https://ai.google.dev/) — Primary free AI backend
+- [OpenRouter](https://openrouter.ai/) — Fallback free AI model routing
 - [PDF.js](https://mozilla.github.io/pdf.js/) — In-browser PDF parsing by Mozilla
 - [Google Fonts](https://fonts.google.com/) — Space Mono & Syne typefaces
-- [NVIDIA Nemotron](https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b) — Primary AI backbone
 
 ---
 
 ## 📌 Quick Setup TL;DR
 
 ```bash
-git clone https://github.com/Sdinzsh/Resume_analyser.git
-cd Resume_analyser
+git clone https://github.com/Sdinzsh/Resume_Analyzer.git
+cd Resume_Analyzer
 npm install
-echo "VITE_OPENROUTER_API_KEY=your_key_here" > .env
+echo "VITE_GEMINI_API_KEY=your_key_here" > .env
+echo "VITE_OPENROUTER_API_KEY=your_key_here" >> .env
 npm run dev
 ```
 
-> 🔑 Get your free key → [openrouter.ai/keys](https://openrouter.ai/keys)
+> 🔑 Get your free Gemini key → [aistudio.google.com/apikey](https://aistudio.google.com/apikey)  
+> 🔑 Get your free OpenRouter key → [openrouter.ai/keys](https://openrouter.ai/keys)
 
 ---
 
