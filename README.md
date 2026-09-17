@@ -68,17 +68,18 @@ Gemini is tried first. If it's missing a key, rate-limited, or errors out, the a
 
 ```
 1️⃣ Gemini (primary)
-   gemini-3.6-flash                        ← Primary
-   gemini-3.5-flash-lite                   ← Backup Gemini model
+   gemini-3.8-flash                       ← Primary
+   gemini-3.7-flash                       ← First fallback
+   gemini-3.6-flash                       ← Second fallback
 
 2️⃣ OpenRouter (fallback, only if Gemini is unavailable)
-   nvidia/nemotron-3-ultra-550b-a55b:free  ← Primary
-   nousresearch/hermes-3-llama-3.1-405b:free
-   nvidia/nemotron-3-super-120b-a12b:free
-   qwen/qwen3-next-80b-a3b-instruct:free
-   meta-llama/llama-3.3-70b-instruct:free
-   openrouter/free                         ← Smart fallback router
+   nvidia/nemotron-3.5-lightning:free      ← Primary
+   thinkingmachines/inkling-small:free
+   poolside/laguna-s-2.1:free
+   openrouter/free                        ← Smart fallback router
 ```
+
+Model IDs and free-tier pricing last checked on **September 17, 2026** against the [Gemini model catalog](https://ai.google.dev/gemini-api/docs/models), [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), and [OpenRouter model catalog](https://openrouter.ai/api/v1/models). Free-tier quotas and model availability can change; access depends on the provider and API key.
 
 ---
 
@@ -135,7 +136,10 @@ http://localhost:5173
 ```
 Resume_Analyzer/
 ├── src/
-│   └── App.jsx              # Main application (single-file architecture)
+│   ├── ai.js                # Model lists and provider fallback
+│   ├── analysis.js          # AI response validation
+│   ├── pdf.js               # PDF reader loading and text extraction
+│   └── App.jsx              # Main application and UI components
 │       ├── ScoreGauge       # Animated circular ATS score gauge
 │       ├── Tag              # Reusable keyword/label tag component
 │       ├── Section          # Animated card section wrapper
@@ -166,7 +170,7 @@ Resume_Analyzer/
 1. **Upload** — User drags & drops or selects a PDF resume
 2. **Extract** — PDF.js extracts raw text client-side (no server upload)
 3. **Prompt** — A detailed prompt is sent to Gemini first; if it's unavailable, the app automatically retries with OpenRouter's free models
-4. **Parse** — The JSON response is validated and parsed
+4. **Parse** — Each response is parsed and validated before rendering; invalid responses trigger the next model in the fallback chain
 5. **Display** — Results are rendered in the animated dashboard
 
 ---
@@ -228,6 +232,8 @@ The AI returns a structured JSON object:
 ```bash
 npm run dev        # Start development server
 npm run build      # Build for production
+npm run lint       # Check JavaScript and React hooks
+npm test           # Run AI fallback and PDF extraction regression tests
 npm run preview    # Preview production build locally
 ```
 

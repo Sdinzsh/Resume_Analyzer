@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { getAIAnalysis } from "./ai.js";
+import { extractTextFromPDF } from "./pdf.js";
 
 const COLORS = {
   bg: "#070b14",
@@ -405,7 +407,7 @@ function LoadingAnalysis() {
       1100,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [steps.length]);
 
   return (
     <div
@@ -524,155 +526,11 @@ function LoadingAnalysis() {
   );
 }
 
-// ── AI Provider Layer ─────────────────────────────────────────────
-// Priority: Gemini (free tier) → OpenRouter (free models)
-const GEMINI_MODELS = [
-  "gemini-3.6-flash",      // Best free-tier quality/speed tradeoff
-  "gemini-3.5-flash-lite", // Backup Gemini model if 3.6 is rate-limited
-];
-
-const OPENROUTER_MODELS = [
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "qwen/qwen3-next-80b-a3b-instruct:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "openrouter/free",
-];
-
-async function callGemini(prompt, apiKey) {
-  let lastError = null;
-
-  for (const model of GEMINI_MODELS) {
-    try {
-      console.log(`Trying Gemini model: ${model}`);
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 4000, temperature: 0.7 },
-          }),
-        },
-      );
-
-      const data = await res.json();
-
-      if (data.error) {
-        lastError = new Error(
-          `[gemini:${model}] ${data.error.message || data.error.status}`,
-        );
-        console.warn("Gemini model failed:", lastError.message);
-        continue;
-      }
-
-      const text =
-        data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ||
-        "";
-
-      if (!text) {
-        lastError = new Error(`[gemini:${model}] Empty response`);
-        continue;
-      }
-
-      return { text, provider: `Gemini (${model})` };
-    } catch (err) {
-      lastError = err;
-      console.warn(`Gemini model ${model} failed:`, err.message);
-    }
-  }
-
-  throw lastError || new Error("Gemini failed for an unknown reason");
-}
-
-async function callOpenRouter(prompt, apiKey) {
-  let lastError = null;
-
-  for (const model of OPENROUTER_MODELS) {
-    try {
-      console.log(`Trying OpenRouter model: ${model}`);
-
-      const res = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "ResumeATS",
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 4000,
-            messages: [{ role: "user", content: prompt }],
-          }),
-        },
-      );
-
-      const data = await res.json();
-
-      if (data.error) {
-        lastError = new Error(`[${model}] ${data.error.message || data.error}`);
-        console.warn("OpenRouter model failed, trying next:", lastError.message);
-        continue;
-      }
-
-      const text = data.choices?.[0]?.message?.content || "";
-
-      if (!text) {
-        lastError = new Error(`[${model}] Empty response`);
-        continue;
-      }
-
-      return { text, provider: `OpenRouter (${model})` };
-    } catch (err) {
-      lastError = err;
-      console.warn(`OpenRouter model ${model} failed:`, err.message);
-    }
-  }
-
-  throw lastError || new Error("All OpenRouter models failed");
-}
-
-async function getAIAnalysis(prompt) {
-  const customGeminiKey = localStorage.getItem("resumeats_gemini_key")?.trim();
-  const customOpenRouterKey = localStorage.getItem("resumeats_openrouter_key")?.trim();
-
-  const geminiKey = customGeminiKey || import.meta.env.VITE_GEMINI_API_KEY;
-  const openrouterKey = customOpenRouterKey || import.meta.env.VITE_OPENROUTER_API_KEY;
-
-  if (!geminiKey && !openrouterKey) {
-    throw new Error(
-      "No AI API key found. Please add a VITE_GEMINI_API_KEY or VITE_OPENROUTER_API_KEY in your .env file, or click 'API Key Settings' in the top bar to set your key.",
-    );
-  }
-
-  if (geminiKey) {
-    try {
-      return await callGemini(prompt, geminiKey);
-    } catch (err) {
-      console.warn("Gemini failed entirely, falling back to OpenRouter:", err.message);
-    }
-  }
-
-  if (openrouterKey) {
-    return await callOpenRouter(prompt, openrouterKey);
-  }
-
-  throw new Error(
-    "Gemini failed and no OpenRouter API key is available for fallback.",
-  );
-}
-
 // ── Results Dashboard Component ─────────────────────────────────────
-function ResultsDashboard({ result, onReset, resumeText }) {
-  if (!result) return null;
-
+function ResultsDashboard({ result, onReset }) {
   const [copiedSummary, setCopiedSummary] = useState(false);
+
+  if (!result) return null;
 
   const scoreLabel =
     result.atsScore >= 75
@@ -1164,31 +1022,25 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
 }
 
 // ── API Key Configuration Modal ─────────────────────────────────────
-function ApiKeyModal({ isOpen, onClose }) {
-  const [geminiKey, setGeminiKey] = useState("");
-  const [openrouterKey, setOpenrouterKey] = useState("");
+function ApiKeyModal({ onClose }) {
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem("resumeats_gemini_key") || "");
+  const [openrouterKey, setOpenrouterKey] = useState(() => localStorage.getItem("resumeats_openrouter_key") || "");
   const [savedMessage, setSavedMessage] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setGeminiKey(localStorage.getItem("resumeats_gemini_key") || "");
-      setOpenrouterKey(localStorage.getItem("resumeats_openrouter_key") || "");
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
+  const closeTimer = useRef(null);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   const handleSave = () => {
     localStorage.setItem("resumeats_gemini_key", geminiKey.trim());
     localStorage.setItem("resumeats_openrouter_key", openrouterKey.trim());
     setSavedMessage(true);
-    setTimeout(() => {
-      setSavedMessage(false);
-      onClose();
-    }, 1000);
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(onClose, 1000);
   };
 
   const handleClear = () => {
+    clearTimeout(closeTimer.current);
+    setSavedMessage(false);
     localStorage.removeItem("resumeats_gemini_key");
     localStorage.removeItem("resumeats_openrouter_key");
     setGeminiKey("");
@@ -1346,94 +1198,50 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showJD, setShowJD] = useState(false);
-  const [pdfReady, setPdfReady] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const extractionId = useRef(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const fileRef = useRef();
   const dropRef = useRef();
 
-  useEffect(() => {
-    if (window.pdfjsLib) {
-      setPdfReady(true);
+  const selectFile = useCallback(async (selected) => {
+    if (!selected) return;
+    const id = ++extractionId.current;
+    setFile(null);
+    setResumeText("");
+    setError("");
+    setIsExtracting(false);
+    if (selected.type !== "application/pdf" && !/\.pdf$/i.test(selected.name)) {
+      setError("Please select a PDF resume.");
       return;
     }
-    if (document.getElementById("pdfjs-script")) return;
-    const script = document.createElement("script");
-    script.id = "pdfjs-script";
-    script.src =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    script.onload = () => {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      setPdfReady(true);
-    };
-    document.head.appendChild(script);
+    setFile(selected);
+    setIsExtracting(true);
+    try {
+      const text = await extractTextFromPDF(selected);
+      if (id === extractionId.current) setResumeText(text);
+    } catch (err) {
+      if (id === extractionId.current) setError(err.message || "Could not read this PDF. Please choose another file.");
+    } finally {
+      if (id === extractionId.current) setIsExtracting(false);
+    }
   }, []);
 
-  const extractTextFromPDF = useCallback(async (file) => {
-    return new Promise((resolve, reject) => {
-      if (!window.pdfjsLib) {
-        reject(new Error("PDF.js library is loading, please try again in a few seconds"));
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const typedArray = new Uint8Array(e.target.result);
-          const pdf = await window.pdfjsLib.getDocument({ data: typedArray })
-            .promise;
-          let fullText = "";
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            const pageText = content.items.map((item) => item.str).join(" ");
-            fullText += pageText + "\n";
-          }
-          resolve(fullText);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsArrayBuffer(file);
-    });
-  }, []);
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    selectFile(e.dataTransfer.files[0]);
+  }, [selectFile]);
 
-  const handleDrop = useCallback(
-    async (e) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const dropped = e.dataTransfer.files[0];
-      if (dropped?.type === "application/pdf") {
-        setFile(dropped);
-        try {
-          const text = await extractTextFromPDF(dropped);
-          setResumeText(text);
-        } catch {
-          setResumeText("");
-        }
-      }
-    },
-    [extractTextFromPDF],
-  );
+  const handleFileInput = useCallback((e) => {
+    selectFile(e.target.files[0]);
+    e.target.value = "";
+  }, [selectFile]);
 
-  const handleFileInput = useCallback(
-    async (e) => {
-      const selected = e.target.files[0];
-      if (selected && selected.type === "application/pdf") {
-        setFile(selected);
-        try {
-          const text = await extractTextFromPDF(selected);
-          setResumeText(text);
-        } catch {
-          setResumeText("");
-        }
-      }
-    },
-    [extractTextFromPDF],
-  );
+  const canAnalyze = Boolean(file && resumeText.trim() && !isExtracting);
 
   const analyzeResume = async () => {
-    if (!file) return;
+    if (!canAnalyze) return;
     setState("loading");
     setResult(null);
     setError("");
@@ -1443,7 +1251,7 @@ export default function App() {
   Analyze the following resume and provide a comprehensive, detailed, actionable analysis.
 
   RESUME TEXT:
-  ${resumeText || "(Could not extract text — analyze structure only)"}
+  ${resumeText}
 
   ${jobDesc ? `JOB DESCRIPTION TO MATCH AGAINST:\n${jobDesc}` : ""}
 
@@ -1498,15 +1306,11 @@ export default function App() {
   Be specific, honest, and actionable. Score conservatively.`;
 
     try {
-      const { text, provider } = await getAIAnalysis(prompt);
-
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error(`[${provider}] No JSON found in response`);
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      setResult(parsed);
+      const { result: analysis, provider } = await getAIAnalysis(prompt, {
+        geminiKey: localStorage.getItem("resumeats_gemini_key")?.trim() || import.meta.env.VITE_GEMINI_API_KEY?.trim(),
+        openrouterKey: localStorage.getItem("resumeats_openrouter_key")?.trim() || import.meta.env.VITE_OPENROUTER_API_KEY?.trim(),
+      });
+      setResult(analysis);
       setState("result");
       console.log(`✅ Analysis successful via ${provider}`);
     } catch (err) {
@@ -1514,13 +1318,15 @@ export default function App() {
       setError(
         err?.message?.startsWith("No AI API key")
           ? err.message
-          : "All available AI providers (Gemini + OpenRouter) are currently busy or rate-limited. Please try again in a few moments.",
+          : "Could not get a valid analysis. Check your API keys and available quota, then try again.",
       );
       setState("error");
     }
   };
 
   const handleReset = () => {
+    extractionId.current += 1;
+    setIsExtracting(false);
     setState("idle");
     setResult(null);
     setError("");
@@ -1534,7 +1340,7 @@ export default function App() {
       <style>{globalStyles}</style>
 
       {/* API Key Modal */}
-      <ApiKeyModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {isSettingsOpen && <ApiKeyModal onClose={() => setIsSettingsOpen(false)} />}
 
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         {/* Navigation Header */}
@@ -1802,6 +1608,9 @@ export default function App() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        extractionId.current += 1;
+                        setIsExtracting(false);
+                        setError("");
                         setFile(null);
                         setResumeText("");
                         if (fileRef.current) fileRef.current.value = "";
@@ -1922,29 +1731,32 @@ export default function App() {
                 )}
               </div>
 
+              {isExtracting && <p role="status" style={{ marginTop: 16, color: COLORS.textMuted }}>Reading resume text…</p>}
+              {error && <p role="alert" style={{ marginTop: 16, color: COLORS.red }}>{error}</p>}
+
               {/* Analyze Button */}
               <button
                 onClick={analyzeResume}
-                disabled={!file}
+                disabled={!canAnalyze}
                 className="btn-hover"
                 style={{
                   width: "100%",
                   marginTop: 28,
-                  background: file
+                  background: canAnalyze
                     ? `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`
                     : COLORS.surfaceHover,
                   border: "none",
-                  color: file ? "#ffffff" : COLORS.textDim,
+                  color: canAnalyze ? "#ffffff" : COLORS.textDim,
                   padding: "16px 28px",
                   borderRadius: 14,
                   fontSize: 16,
                   fontWeight: 800,
-                  cursor: file ? "pointer" : "not-allowed",
+                  cursor: canAnalyze ? "pointer" : "not-allowed",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 10,
-                  boxShadow: file ? `0 10px 30px ${COLORS.accentDim}` : "none",
+                  boxShadow: canAnalyze ? `0 10px 30px ${COLORS.accentDim}` : "none",
                   transition: "all 0.25s ease",
                 }}
               >
@@ -1967,7 +1779,7 @@ export default function App() {
                   <Icons.Shield /> 100% Client-Side Privacy
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Icons.Sparkles /> Gemini 3.6 Flash & OpenRouter AI
+                  <Icons.Sparkles /> Gemini & OpenRouter AI
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <Icons.Check /> Zero Data Logging
@@ -1984,7 +1796,6 @@ export default function App() {
             <ResultsDashboard
               result={result}
               onReset={handleReset}
-              resumeText={resumeText}
             />
           )}
 
