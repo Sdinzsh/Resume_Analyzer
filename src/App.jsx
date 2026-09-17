@@ -26,70 +26,11 @@ const COLORS = {
   red: "#ef4444",
   redDim: "rgba(239, 68, 68, 0.12)",
   redBorder: "rgba(239, 68, 68, 0.3)",
-  muted: "#64748b",
+  muted: "#8b9bb2",
   text: "#f8fafc",
   textMuted: "#94a3b8",
-  textDim: "#64748b",
+  textDim: "#8b9bb2",
 };
-
-const globalStyles = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: ${COLORS.bg};
-    color: ${COLORS.text};
-    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
-    50% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.5); }
-  }
-
-  @keyframes scanLine {
-    0% { top: 0%; opacity: 0; }
-    30% { opacity: 1; }
-    70% { opacity: 1; }
-    100% { top: 100%; opacity: 0; }
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(18px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes floatSlow {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-6px); }
-  }
-
-  @keyframes spinSlow {
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-
-  .btn-hover {
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .btn-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35);
-  }
-  .btn-hover:active {
-    transform: translateY(0);
-  }
-
-  .card-glass {
-    background: rgba(19, 28, 46, 0.75);
-    backdrop-filter: blur(16px);
-    border: 1px solid ${COLORS.border};
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  }
-`;
 
 // ── SVG Icon Helper Components ─────────────────────────────────────
 const Icons = {
@@ -232,7 +173,7 @@ function ScoreGauge({ score, label, subtext }) {
         >
           <span
             style={{
-              fontFamily: "'JetBrains Mono'",
+              fontFamily: "var(--font-mono)",
               fontSize: 38,
               fontWeight: 800,
               color: "#ffffff",
@@ -291,6 +232,7 @@ function Tag({ text, color = COLORS.accent, isCopyable = false }) {
 
   return (
     <span
+      className="tag"
       onClick={handleCopy}
       style={{
         background: color + "14",
@@ -299,7 +241,7 @@ function Tag({ text, color = COLORS.accent, isCopyable = false }) {
         padding: "4px 10px",
         borderRadius: 6,
         fontSize: 12,
-        fontFamily: "'JetBrains Mono'",
+        fontFamily: "var(--font-mono)",
         fontWeight: 500,
         display: "inline-flex",
         alignItems: "center",
@@ -320,29 +262,25 @@ function Tag({ text, color = COLORS.accent, isCopyable = false }) {
 
 function SectionCard({ title, icon: IconComponent, children, delay = 0, badge, headerAction }) {
   return (
-    <div
+    <div className="section-card"
       style={{
         background: COLORS.card,
         border: `1px solid ${COLORS.border}`,
         borderRadius: 16,
-        padding: 24,
         boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
         animation: `fadeUp 0.4s ease-out ${delay}s both`,
       }}
     >
-      <div
+      <div className="section-heading"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           marginBottom: 20,
           borderBottom: `1px solid ${COLORS.border}88`,
           paddingBottom: 14,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="section-title">
           {IconComponent && (
-            <div
+            <div className="section-icon"
               style={{
                 width: 32,
                 height: 32,
@@ -369,7 +307,7 @@ function SectionCard({ title, icon: IconComponent, children, delay = 0, badge, h
             {title}
           </h3>
           {badge && (
-            <span
+            <span className="section-badge"
               style={{
                 background: COLORS.accentDim,
                 color: COLORS.accentLight,
@@ -511,7 +449,7 @@ function LoadingAnalysis() {
             </span>
             <span
               style={{
-                fontFamily: "'JetBrains Mono'",
+                fontFamily: "var(--font-mono)",
                 fontSize: 13,
                 color: i <= step ? COLORS.text : COLORS.muted,
                 fontWeight: i === step ? 600 : 400,
@@ -578,12 +516,11 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, animation: "fadeUp 0.5s ease-out" }}>
       {/* Top Banner Header */}
-      <div
+      <div className="report-heading"
         style={{
           background: `linear-gradient(135deg, ${COLORS.card} 0%, ${COLORS.surface} 100%)`,
           border: `1px solid ${COLORS.border}`,
           borderRadius: 20,
-          padding: 24,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -592,7 +529,7 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
           boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div className="report-title">
           <div
             style={{
               padding: "10px 18px",
@@ -624,7 +561,7 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="report-actions">
           <button
             onClick={handleCopyReport}
             style={{
@@ -688,13 +625,7 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
       </div>
 
       {/* 4 Core Score Gauges Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 16,
-        }}
-      >
+      <div className="score-grid">
         <ScoreGauge score={result.atsScore} label="Overall ATS" subtext="Parser match likelihood" />
         <ScoreGauge score={result.keywordMatchScore} label="Keyword Density" subtext="Job title alignment" />
         <ScoreGauge score={result.formattingScore} label="Format Quality" subtext="Layout & readability" />
@@ -745,7 +676,7 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
                 fontSize: 22,
                 fontWeight: 800,
                 color: COLORS.accentLight,
-                fontFamily: "'JetBrains Mono'",
+                fontFamily: "var(--font-mono)",
               }}
             >
               {result.jobMatch.matchPercent}%
@@ -960,7 +891,7 @@ ${(result.quickWins || []).map((w) => `- ${w}`).join("\n")}
                       ))}
                     </div>
 
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="job-links">
                       {searchLinks.map((link) => (
                         <a
                           key={link.label}
@@ -1048,7 +979,7 @@ function ApiKeyModal({ onClose }) {
   };
 
   return (
-    <div
+    <div className="modal-backdrop"
       style={{
         position: "fixed",
         inset: 0,
@@ -1058,15 +989,13 @@ function ApiKeyModal({ onClose }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 20,
       }}
     >
-      <div
+      <div className="api-modal"
         style={{
           background: COLORS.card,
           border: `1px solid ${COLORS.border}`,
           borderRadius: 20,
-          padding: 28,
           width: "100%",
           maxWidth: 480,
           boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
@@ -1082,6 +1011,8 @@ function ApiKeyModal({ onClose }) {
           </div>
           <button
             onClick={onClose}
+            className="modal-close"
+            aria-label="Close API key settings"
             style={{
               background: "none",
               border: "none",
@@ -1115,9 +1046,7 @@ function ApiKeyModal({ onClose }) {
                 borderRadius: 10,
                 padding: "10px 14px",
                 color: "#ffffff",
-                fontSize: 13,
-                fontFamily: "'JetBrains Mono'",
-                outline: "none",
+                fontFamily: "var(--font-mono)",
               }}
             />
           </div>
@@ -1138,9 +1067,7 @@ function ApiKeyModal({ onClose }) {
                 borderRadius: 10,
                 padding: "10px 14px",
                 color: "#ffffff",
-                fontSize: 13,
-                fontFamily: "'JetBrains Mono'",
-                outline: "none",
+                fontFamily: "var(--font-mono)",
               }}
             />
           </div>
@@ -1152,7 +1079,7 @@ function ApiKeyModal({ onClose }) {
           </p>
         )}
 
-        <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
+        <div className="modal-actions" style={{ marginTop: 24 }}>
           <button
             onClick={handleClear}
             style={{
@@ -1337,35 +1264,24 @@ export default function App() {
 
   return (
     <>
-      <style>{globalStyles}</style>
-
       {/* API Key Modal */}
       {isSettingsOpen && <ApiKeyModal onClose={() => setIsSettingsOpen(false)} />}
 
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="app-shell">
         {/* Navigation Header */}
-        <header
+        <header className="site-header"
           style={{
             background: "rgba(15, 23, 42, 0.8)",
             backdropFilter: "blur(16px)",
             borderBottom: `1px solid ${COLORS.border}`,
-            padding: "16px 32px",
             position: "sticky",
             top: 0,
             zIndex: 100,
           }}
         >
-          <div
-            style={{
-              maxWidth: 1100,
-              margin: "0 auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
+          <div className="header-content">
+            <div className="brand">
+              <div className="brand-icon"
                 style={{
                   width: 38,
                   height: 38,
@@ -1394,7 +1310,7 @@ export default function App() {
                   >
                     ResumeATS
                   </h1>
-                  <span
+                  <span className="brand-badge"
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -1409,16 +1325,15 @@ export default function App() {
                     PRO 2026
                   </span>
                 </div>
-                <p style={{ fontSize: 11, color: COLORS.textDim }}>
+                <p className="brand-tagline" style={{ fontSize: 11, color: COLORS.textDim }}>
                   Enterprise AI Resume & ATS Optimization System
                 </p>
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
+            <div className="header-actions">
+              <div className="engine-status"
                 style={{
-                  display: "flex",
                   alignItems: "center",
                   gap: 6,
                   fontSize: 12,
@@ -1466,7 +1381,7 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <main style={{ flex: 1, maxWidth: 1000, width: "100%", margin: "0 auto", padding: "40px 20px 80px" }}>
+        <main className="main-content">
           {state === "idle" && (
             <div style={{ animation: "fadeUp 0.4s ease-out" }}>
               {/* Hero Banner */}
@@ -1488,9 +1403,8 @@ export default function App() {
                 >
                   <Icons.Sparkles /> Maximize Interview Callback Rates
                 </div>
-                <h2
+                <h2 className="hero-title"
                   style={{
-                    fontSize: 36,
                     fontWeight: 800,
                     letterSpacing: -1,
                     color: "#ffffff",
@@ -1514,7 +1428,7 @@ export default function App() {
               </div>
 
               {/* Upload Drop Zone Card */}
-              <div
+              <div className="upload-zone"
                 ref={dropRef}
                 onClick={() => !file && fileRef.current?.click()}
                 onDragOver={(e) => {
@@ -1532,7 +1446,6 @@ export default function App() {
                         : COLORS.border
                   }`,
                   borderRadius: 20,
-                  padding: "50px 32px",
                   textAlign: "center",
                   cursor: file ? "default" : "pointer",
                   background: isDragging
@@ -1601,7 +1514,7 @@ export default function App() {
                       {(file.size / 1024).toFixed(1)} KB · PDF Document
                     </p>
                     {resumeText && (
-                      <p style={{ fontSize: 12, color: COLORS.accentLight, fontFamily: "'JetBrains Mono'" }}>
+                      <p style={{ fontSize: 12, color: COLORS.accentLight, fontFamily: "var(--font-mono)" }}>
                         ✓ {resumeText.split(/\s+/).length} words extracted cleanly
                       </p>
                     )}
@@ -1717,13 +1630,12 @@ export default function App() {
                         borderRadius: 10,
                         padding: 14,
                         color: "#ffffff",
-                        fontSize: 14,
+                        fontSize: 16,
                         resize: "vertical",
-                        outline: "none",
                         lineHeight: 1.5,
                       }}
                     />
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: COLORS.textDim }}>
+                    <div className="jd-meta" style={{ marginTop: 8, fontSize: 12, color: COLORS.textDim }}>
                       <span>Tip: Including a JD unlocks job-specific match scoring.</span>
                       <span>{jobDesc.length} characters</span>
                     </div>
@@ -1801,12 +1713,11 @@ export default function App() {
 
           {/* Error Screen */}
           {state === "error" && (
-            <div
+            <div className="error-panel"
               style={{
                 background: COLORS.card,
                 border: `1px solid ${COLORS.redBorder}`,
                 borderRadius: 20,
-                padding: 36,
                 textAlign: "center",
                 animation: "fadeUp 0.4s ease-out",
               }}
@@ -1832,7 +1743,7 @@ export default function App() {
               <p style={{ color: COLORS.textMuted, fontSize: 14, maxWidth: 520, margin: "0 auto 24px", lineHeight: 1.6 }}>
                 {error}
               </p>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <div className="error-actions">
                 <button
                   onClick={() => setIsSettingsOpen(true)}
                   style={{
